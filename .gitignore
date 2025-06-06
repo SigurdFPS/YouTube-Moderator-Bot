@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+*.log
+
+# Electron cache
+.cache/
+out/
+
+# App tokens
+tokens.json
+.env
+.env.local
+
+# Analysis logs
+logs/
+*.txt
+
+# Credentials
+credentials.json
+
+# System/IDE config
+.vscode/
+.idea/
