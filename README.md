@@ -58,7 +58,7 @@ You can get this by:
 	•	Visiting: Google Cloud Console
 	•	Creating a project and enabling YouTube Data API v3
 	•	Creating OAuth 2.0 Client ID credentials (desktop)
-	•	Download the JSON file and rename it to credentials.json
+	•	Download the JSON file and place your client ID and secret in your .env file
 
 ⚠️ Your app must use http://localhost as an authorized redirect URI.
 
