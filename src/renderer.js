@@ -59,7 +59,16 @@ deleteHighBtn.addEventListener('click', async () => {
 });
 
 reviewPossibleBtn.addEventListener('click', () => {
-  alert('Manual review not yet implemented. You can copy & review above.');
+  const width = 650;
+  const height = 700;
+  const left = window.screenX + (window.outerWidth - width) / 2;
+  const top = window.screenY + (window.outerHeight - height) / 2;
+
+  window.open(
+    'reviewModal.html',
+    'Review Comments',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes`
+  );
 });
 
 deleteReviewedBtn.addEventListener('click', async () => {
