@@ -1,0 +1,36 @@
+{
+  "name": "youtube-comment-cleaner",
+  "version": "1.0.0",
+  "description": "Open-source YouTube comment moderation bot that analyzes and removes likely spam or bot comments from your videos.",
+  "main": "main.js",
+  "author": {
+    "name": "SigurdFPS",
+    "url": "https://github.com/SigurdFPS"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-packager . YouTubeCommentCleaner --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "dependencies": {
+    "electron": "^29.0.0",
+    "googleapis": "^132.0.0"
+  },
+  "devDependencies": {
+    "electron-packager": "^17.1.1"
+  },
+  "keywords": [
+    "youtube",
+    "moderation",
+    "comment cleaner",
+    "spam remover",
+    "electron",
+    "open-source",
+    "sigurdfps"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SigurdFPS/youtube-comment-cleaner"
+  }
+}
