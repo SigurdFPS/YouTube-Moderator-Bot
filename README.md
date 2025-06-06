@@ -52,7 +52,7 @@ npm install
 
 3. Add your YouTube API credentials
 
-Create a file called credentials.json in the root directory.
+Create a file called .env & copy the example over to your new .env file in the root directory.
 
 You can get this by:
 	•	Visiting: Google Cloud Console
