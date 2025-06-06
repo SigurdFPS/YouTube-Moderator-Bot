@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Review Comments</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #121212; color: white; }
+    .comment-box { margin-bottom: 15px; background: #1e1e1e; padding: 10px; border-radius: 6px; }
+    label { margin-left: 10px; }
+    button { padding: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🧐 Review Possible Spam Comments</h2>
+  <form id="reviewForm"></form>
+  <button onclick="submitReview()">Submit Decision</button>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    window.addEventListener('DOMContentLoaded', () => {
+      ipcRenderer.invoke('get-review-comments').then((comments) => {
+        const form = document.getElementById('reviewForm');
+        comments.forEach((c, i) => {
+          const div = document.createElement('div');
+          div.className = 'comment-box';
+          div.innerHTML = `
+            <div>${c.text}</div>
+            <input type="radio" name="review-${i}" value="keep" checked>
+            <label>Keep</label>
+            <input type="radio" name="review-${i}" value="delete">
+            <label>Delete</label>
+            <input type="hidden" name="commentId-${i}" value="${c.id}">
+          `;
+          form.appendChild(div);
+        });
+      });
+    });
+
+    function submitReview() {
+      const form = document.getElementById('reviewForm');
+      const data = [];
+
+      for (let i = 0; i < form.elements.length; i++) {
+        const el = form.elements[i];
+        if (el.name.startsWith('review-') && el.checked && el.value === 'delete') {
+          const index = el.name.split('-')[1];
+          const commentId = form.elements[`commentId-${index}`].value;
+          data.push(commentId);
+        }
+      }
+
+      ipcRenderer.send('submit-reviewed-comments', data);
+      window.close();
+    }
+  </script>
+</body>
+</html>
