@@ -2,11 +2,20 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
 const { authorize } = require('./auth');
-const { fetchComments, analyzeComments, extractVideoId } = require('./bot');
+const {
+  fetchComments,
+  analyzeComments,
+  extractVideoId,
+  deleteComments,
+} = require('./bot');
 const { generateReport } = require('./reportGenerator');
 const { writeLog, writeGroup } = require('./logger');
 
 let mainWindow;
+let lastAnalyzed = {
+  highlyLikely: [],
+  possibleLikely: [],
+};
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -60,6 +69,10 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
 
     const analysis = analyzeComments(comments);
 
+    // Store for later deletion or review
+    lastAnalyzed.highlyLikely = analysis.highLikely;
+    lastAnalyzed.possibleLikely = analysis.possibleLikely;
+
     const summary = [
       `🚩 Highly likely spam: ${analysis.highLikely.length}`,
       `⚠️ Possible spam: ${analysis.possibleLikely.length}`,
@@ -70,7 +83,6 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     logSteps.push(...summary);
     logSteps.push('🧠 Analysis complete. Generating report...');
 
-    // === Generate and save report ===
     const reportFile = generateReport({
       videoLink,
       highLikely: analysis.highLikely,
@@ -99,13 +111,32 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   }
 });
 
-// === IPC: Stubbed Deletion Actions ===
+// === IPC: Real Deletion of Highly Likely Comments ===
 ipcMain.handle('delete-highly-likely', async () => {
-  writeLog('🧹 Deleted highly likely comments (stub)');
-  return '🧹 Deleted highly likely comments (stub).';
+  if (!lastAnalyzed.highlyLikely.length) {
+    return '⚠️ No highly likely comments available to delete.';
+  }
+
+  const deleted = await deleteComments(
+    lastAnalyzed.highlyLikely.map(c => c.id)
+  );
+
+  writeLog(`🧹 Deleted ${deleted.length} highly likely comments`);
+  return `🧹 Deleted ${deleted.length} highly likely comments`;
 });
 
+// === IPC: Open review modal, provide comment list ===
+ipcMain.handle('get-review-comments', () => {
+  return lastAnalyzed.possibleLikely;
+});
+
+// === IPC: Delete selected comments after manual review ===
+ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
+  const deleted = await deleteComments(idsToDelete);
+  writeLog(`🗑️ Manually deleted ${deleted.length} reviewed comments`);
+});
+
+// === IPC: Stub fallback for Delete Reviewed button ===
 ipcMain.handle('delete-reviewed-comments', async () => {
-  writeLog('🗑️ Deleted reviewed comments (stub)');
-  return '🗑️ Deleted reviewed comments (stub).';
+  return '🧼 Please use the Review button and select comments manually.';
 });
