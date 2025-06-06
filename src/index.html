@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>YouTube Comment Moderation Bot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+    }
+
+    .left-panel {
+      width: 60%;
+      padding-right: 20px;
+    }
+
+    .right-panel {
+      width: 40%;
+      border-left: 1px solid #444;
+      padding-left: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #fff;
+    }
+
+    #logBox, #reportBox {
+      background-color: #1e1e1e;
+      border: 1px solid #333;
+      padding: 10px;
+      margin-top: 10px;
+      height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .section-label {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: #323232;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="left-panel">
+    <button id="authBtn">🔗 Authorize YouTube</button>
+    <input type="text" id="videoLink" placeholder="Paste YouTube Video Link Here" />
+
+    <div id="logBox">🔌 Bot awaiting command...</div>
+  </div>
+
+  <div class="right-panel">
+    <div id="reportBox">
+      <div class="section-label">Highly Likely Comments</div>
+      <div id="highLikely"></div>
+      <div class="section-label">Possible Comments</div>
+      <div id="possibleLikely"></div>
+      <div class="section-label">Safe Comments</div>
+      <div id="safeCount">0 comments marked safe.</div>
+    </div>
+
+    <button id="deleteHighBtn">🧹 Delete Highly Likely</button>
+    <button id="reviewPossibleBtn">🔍 Review Possible</button>
+    <button id="deleteReviewedBtn">🗑️ Delete Reviewed Comments</button>
+  </div>
+
+  <div class="toast" id="toast">✔️ Report saved</div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
