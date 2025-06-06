@@ -1,9 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const fs = require('fs');
 
 const { authorize } = require('./auth');
 const { fetchComments, analyzeComments, extractVideoId } = require('./bot');
+const { generateReport } = require('./reportGenerator');
+const { writeLog, writeGroup } = require('./logger');
 
 let mainWindow;
 
@@ -33,10 +34,11 @@ app.on('window-all-closed', () => {
 // === IPC: YouTube OAuth Authorization ===
 ipcMain.handle('authorize-youtube', async () => {
   try {
-    await authorize(); // sets internal auth client
+    await authorize();
+    writeLog('✅ YouTube account successfully authenticated');
     return '✅ YouTube account successfully authenticated';
   } catch (err) {
-    console.error('Authorization Error:', err.message);
+    writeLog(`❌ Authorization failed: ${err.message}`);
     return `❌ Authorization failed: ${err.message}`;
   }
 });
@@ -49,41 +51,35 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     const videoId = extractVideoId(videoLink);
     if (!videoId) throw new Error('Invalid YouTube link or missing video ID');
 
-    logSteps.push(`Video received: ${videoLink}`);
+    writeLog(`🎯 Video received: ${videoLink}`);
+    logSteps.push(`🎯 Video received: ${videoLink}`);
+
     const comments = await fetchComments(videoId);
-    logSteps.push(`Fetched ${comments.length} comments...`);
+    writeLog(`📥 Fetched ${comments.length} comments`);
+    logSteps.push(`📥 Fetched ${comments.length} comments`);
 
     const analysis = analyzeComments(comments);
 
-    logSteps.push(`Highly likely spam: ${analysis.highLikely.length}`);
-    logSteps.push(`Possible spam: ${analysis.possibleLikely.length}`);
-    logSteps.push(`Safe comments: ${analysis.safeCount}`);
-    logSteps.push('Analysis complete. Report generated.');
+    const summary = [
+      `🚩 Highly likely spam: ${analysis.highLikely.length}`,
+      `⚠️ Possible spam: ${analysis.possibleLikely.length}`,
+      `✅ Safe comments: ${analysis.safeCount}`,
+    ];
 
-    // === Save Log Report ===
-    const date = new Date().toISOString().split('T')[0];
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const logDir = path.join(__dirname, 'logs');
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
+    writeGroup(summary);
+    logSteps.push(...summary);
+    logSteps.push('🧠 Analysis complete. Generating report...');
 
-    const reportFile = path.join(logDir, `${timestamp}_report.txt`);
-    const fileContent = [
-      `Video: ${videoLink}`,
-      `Date: ${new Date().toLocaleString()}`,
-      `Highly Likely: ${analysis.highLikely.length}`,
-      `Possible: ${analysis.possibleLikely.length}`,
-      `Safe: ${analysis.safeCount}`,
-      `Comments Total: ${comments.length}`,
-      '',
-      '=== Highly Likely ===',
-      ...analysis.highLikely.map(c => `- ${c.text} (${c.reason})`),
-      '',
-      '=== Possible ===',
-      ...analysis.possibleLikely.map(c => `- ${c.text} (${c.reason})`),
-    ].join('\n');
+    // === Generate and save report ===
+    const reportFile = generateReport({
+      videoLink,
+      highLikely: analysis.highLikely,
+      possibleLikely: analysis.possibleLikely,
+      safeCount: analysis.safeCount,
+    });
 
-    fs.writeFileSync(reportFile, fileContent);
-    logSteps.push(`Report saved: ${reportFile}`);
+    logSteps.push(`📄 Report saved: ${reportFile}`);
+    writeLog(`📄 Report saved: ${reportFile}`);
 
     return {
       highLikely: analysis.highLikely.map(c => c.text),
@@ -92,6 +88,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
       logSteps,
     };
   } catch (err) {
+    writeLog(`❌ Error analyzing video: ${err.message}`);
     logSteps.push(`❌ Error: ${err.message}`);
     return {
       highLikely: [],
@@ -104,9 +101,11 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
 
 // === IPC: Stubbed Deletion Actions ===
 ipcMain.handle('delete-highly-likely', async () => {
+  writeLog('🧹 Deleted highly likely comments (stub)');
   return '🧹 Deleted highly likely comments (stub).';
 });
 
 ipcMain.handle('delete-reviewed-comments', async () => {
+  writeLog('🗑️ Deleted reviewed comments (stub)');
   return '🗑️ Deleted reviewed comments (stub).';
 });
