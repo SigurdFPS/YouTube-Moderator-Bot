@@ -1,43 +1,38 @@
-// auth.js
-
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
 
 const SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl'];
 const TOKEN_PATH = path.join(__dirname, 'tokens.json');
-const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json'); // user must supply this
 
 let oauth2Client = null;
 
 function createOAuthClient() {
-  const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH));
-  const { client_secret, client_id, redirect_uris } = credentials.installed;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost';
 
-  oauth2Client = new google.auth.OAuth2(
-    client_id,
-    client_secret,
-    redirect_uris[0]
-  );
+  if (!clientId || !clientSecret) {
+    throw new Error('Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env file');
+  }
 
+  oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
   return oauth2Client;
 }
 
 async function authorize() {
-  if (!fs.existsSync(CREDENTIALS_PATH)) throw new Error('Missing credentials.json');
-
   const oAuthClient = createOAuthClient();
 
   if (fs.existsSync(TOKEN_PATH)) {
     const token = JSON.parse(fs.readFileSync(TOKEN_PATH));
     oAuthClient.setCredentials(token);
 
-    // Attempt refresh
     try {
-      await oAuthClient.getAccessToken();
+      await oAuthClient.getAccessToken(); // will auto-refresh if needed
       return oAuthClient;
     } catch (err) {
-      console.error('⚠️ Failed to refresh token, deleting...');
+      console.error('⚠️ Failed to refresh token, removing tokens.json...');
       fs.unlinkSync(TOKEN_PATH);
     }
   }
@@ -47,10 +42,10 @@ async function authorize() {
     scope: SCOPES,
   });
 
-  console.log('🔗 Authorize this app by visiting this URL:', authUrl);
+  console.log('🔗 Authorize this app by visiting this URL:\n', authUrl);
   require('electron').shell.openExternal(authUrl);
 
-  const code = await waitForCodeInput(); // implemented below
+  const code = await waitForCodeInput();
   const { tokens } = await oAuthClient.getToken(code);
   oAuthClient.setCredentials(tokens);
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
@@ -66,13 +61,13 @@ function waitForCodeInput() {
 
     readline.question('Paste the code from the browser here: ', (code) => {
       readline.close();
-      resolve(code);
+      resolve(code.trim());
     });
   });
 }
 
 function getOAuthClient() {
-  if (!oauth2Client) throw new Error('Not authorized. Call authorize() first.');
+  if (!oauth2Client) throw new Error('OAuth client not initialized. Call authorize() first.');
   return oauth2Client;
 }
 
