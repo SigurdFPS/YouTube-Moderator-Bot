@@ -1,5 +1,3 @@
-// bot.js
-
 const { google } = require('googleapis');
 const { getOAuthClient } = require('./auth');
 
@@ -87,15 +85,36 @@ function analyzeComments(comments) {
   };
 }
 
-// 🔍 Extracts the YouTube video ID from a full link
+// 🔍 Extract YouTube video ID from URL
 function extractVideoId(link) {
   const url = new URL(link);
   if (url.hostname === 'youtu.be') return url.pathname.substring(1);
   return url.searchParams.get('v');
 }
 
+// 🧹 Delete comments by ID
+async function deleteComments(commentIds = []) {
+  const auth = getOAuthClient();
+  const results = [];
+
+  for (const id of commentIds) {
+    try {
+      await youtube.comments.delete({
+        auth,
+        id,
+      });
+      results.push({ id, status: 'deleted' });
+    } catch (err) {
+      results.push({ id, status: 'error', message: err.message });
+    }
+  }
+
+  return results;
+}
+
 module.exports = {
   fetchComments,
   analyzeComments,
   extractVideoId,
+  deleteComments,
 };
