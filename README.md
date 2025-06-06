@@ -95,7 +95,7 @@ npm run dev
 ├── logger.js              # Daily logs
 ├── index.html             # Main UI
 ├── /logs/                 # Saved analysis reports
-├── credentials.json       # Your YouTube API secrets (DO NOT COMMIT)
+├── .env (.envExample)     # Your YouTube API secrets (DO NOT COMMIT)
 ├── tokens.json            # Auto-generated OAuth tokens
 
 
@@ -153,11 +153,3 @@ Follow me for more tools & guides!
 If you find this project helpful, please consider giving it a ⭐️ — it helps visibility and supports further development!
 
 ---
-
-### ✅ Next Steps (Optional)
-
-- Generate `.gitignore` (ignore `tokens.json`, `logs/`, `node_modules/`)
-- Add `assets/screenshot.png` for GitHub display
-- (Optional) Enable `.env` support if you later externalize config
-
-Let me know if you'd like help preparing the GitHub release zip or automated `.exe` export for sharing.
