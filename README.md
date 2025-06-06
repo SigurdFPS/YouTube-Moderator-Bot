@@ -1,9 +1,3 @@
-Here’s a complete, professional-grade README.md for your open-source project, designed for GitHub visibility and developer adoption. It includes setup, authentication, usage, screenshots (placeholder), licensing, and contribution guidelines.
-
-⸻
-
-✅ README.md
-
 # YouTube Comment Cleaner
 
 > ⚙️ Open-source YouTube comment moderation tool — built with Electron. Analyze and remove spammy bot-like comments from your videos with ease.
