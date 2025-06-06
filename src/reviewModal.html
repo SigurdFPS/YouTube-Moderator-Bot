@@ -4,54 +4,140 @@
   <meta charset="UTF-8" />
   <title>Review Comments</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #121212; color: white; }
-    .comment-box { margin-bottom: 15px; background: #1e1e1e; padding: 10px; border-radius: 6px; }
-    label { margin-left: 10px; }
-    button { padding: 10px; margin-top: 10px; }
+    body {
+      font-family: sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    .comment-box {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+
+    .comment-meta {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 6px;
+    }
+
+    .comment-text {
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+
+    .choice {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    label {
+      margin-left: 5px;
+      margin-right: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 15px;
+      left: 20px;
+      background: #2a2a2a;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 5px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
   <h2>🧐 Review Possible Spam Comments</h2>
   <form id="reviewForm"></form>
-  <button onclick="submitReview()">Submit Decision</button>
+  <button type="button" onclick="submitReview()">Submit Reviewed Decisions</button>
+
+  <div id="toast">✔️ Comments marked for deletion</div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    window.addEventListener('DOMContentLoaded', () => {
-      ipcRenderer.invoke('get-review-comments').then((comments) => {
-        const form = document.getElementById('reviewForm');
-        comments.forEach((c, i) => {
-          const div = document.createElement('div');
-          div.className = 'comment-box';
-          div.innerHTML = `
-            <div>${c.text}</div>
+    window.addEventListener('DOMContentLoaded', async () => {
+      const comments = await ipcRenderer.invoke('get-review-comments');
+      const form = document.getElementById('reviewForm');
+
+      comments.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'comment-box';
+        div.innerHTML = `
+          <div class="comment-meta">👤 ${c.author || 'Unknown'} | 🕓 ${new Date(c.publishedAt).toLocaleString()}</div>
+          <div class="comment-text">"${c.text}"</div>
+          <div class="choice">
             <input type="radio" name="review-${i}" value="keep" checked>
             <label>Keep</label>
             <input type="radio" name="review-${i}" value="delete">
             <label>Delete</label>
-            <input type="hidden" name="commentId-${i}" value="${c.id}">
-          `;
-          form.appendChild(div);
-        });
+          </div>
+          <input type="hidden" name="commentId-${i}" value="${c.id}">
+          <input type="hidden" name="reason-${i}" value="${c.reason}">
+        `;
+        form.appendChild(div);
       });
     });
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
 
     function submitReview() {
       const form = document.getElementById('reviewForm');
       const data = [];
 
-      for (let i = 0; i < form.elements.length; i++) {
-        const el = form.elements[i];
-        if (el.name.startsWith('review-') && el.checked && el.value === 'delete') {
-          const index = el.name.split('-')[1];
-          const commentId = form.elements[`commentId-${index}`].value;
-          data.push(commentId);
+      const inputs = Array.from(form.elements);
+      const reviewPairs = inputs.filter(el => el.name.startsWith('review-'));
+
+      reviewPairs.forEach((input) => {
+        if (input.checked && input.value === 'delete') {
+          const index = input.name.split('-')[1];
+          const idInput = form.querySelector(`input[name="commentId-${index}"]`);
+          if (idInput) {
+            data.push(idInput.value);
+          }
         }
+      });
+
+      if (data.length === 0) {
+        showToast('⚠️ No comments selected for deletion.');
+        return;
       }
 
       ipcRenderer.send('submit-reviewed-comments', data);
-      window.close();
+      showToast(`✅ ${data.length} comment(s) marked for deletion`);
+      setTimeout(() => window.close(), 1500);
     }
   </script>
 </body>
