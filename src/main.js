@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+const { authorize } = require('./auth');
+const { fetchComments, analyzeComments, extractVideoId } = require('./bot');
+
 let mainWindow;
 
 function createWindow() {
@@ -27,115 +30,83 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// === Mocked Comment Fetcher ===
-function fetchCommentsForVideo(videoLink) {
-  // Simulate pulling comments from YouTube
-  return [
-    "Your videos are always very useful! Thank you for this new knowledge! 🍓",
-    "Been watching you for a long time now 💕🎂",
-    "Your videos have been a real source of inspiration 🦖👑",
-    "Just saying hi",
-    "Subbed because you taught me something cool",
-    "Amazing content 🔥🔥🔥",
-    "Thanks!", // short generic
-    "Thanks!", // repeated
-    "This helped me finish my project 💡",
-  ];
-}
-
-// === Spam Detection Logic ===
-function analyzeComments(comments) {
-  const highLikely = [];
-  const possibleLikely = [];
-  const seenTexts = new Set();
-
-  const highSpamKeywords = ['source of inspiration', 'been watching', 'amaze me', 'positive content', '💕', '👑', '🎂', '🦖', '💖'];
-  const possibleSpamKeywords = ['useful', 'amazing', 'cool', '🔥', 'thanks', 'helped'];
-
-  for (const comment of comments) {
-    const lowered = comment.toLowerCase();
-    const deduplicated = seenTexts.has(lowered);
-
-    if (deduplicated) {
-      highLikely.push(comment + ' (duplicate)');
-      continue;
-    }
-
-    seenTexts.add(lowered);
-
-    if (highSpamKeywords.some(k => lowered.includes(k))) {
-      highLikely.push(comment);
-    } else if (possibleSpamKeywords.some(k => lowered.includes(k))) {
-      possibleLikely.push(comment);
-    }
-  }
-
-  const flaggedTotal = highLikely.length + possibleLikely.length;
-  const safeCount = comments.length - flaggedTotal;
-
-  return {
-    highLikely,
-    possibleLikely,
-    safeCount,
-  };
-}
-
-// === IPC Handlers ===
+// === IPC: YouTube OAuth Authorization ===
 ipcMain.handle('authorize-youtube', async () => {
-  return '✅ YouTube account successfully authenticated (stub)';
+  try {
+    await authorize(); // sets internal auth client
+    return '✅ YouTube account successfully authenticated';
+  } catch (err) {
+    console.error('Authorization Error:', err.message);
+    return `❌ Authorization failed: ${err.message}`;
+  }
 });
 
+// === IPC: Analyze YouTube Comments ===
 ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   const logSteps = [];
 
-  logSteps.push(`Video received: ${videoLink}`);
-  const comments = fetchCommentsForVideo(videoLink);
-  logSteps.push(`Fetched ${comments.length} comments...`);
+  try {
+    const videoId = extractVideoId(videoLink);
+    if (!videoId) throw new Error('Invalid YouTube link or missing video ID');
 
-  const analysis = analyzeComments(comments);
+    logSteps.push(`Video received: ${videoLink}`);
+    const comments = await fetchComments(videoId);
+    logSteps.push(`Fetched ${comments.length} comments...`);
 
-  logSteps.push(`Highly likely spam: ${analysis.highLikely.length}`);
-  logSteps.push(`Possible spam: ${analysis.possibleLikely.length}`);
-  logSteps.push(`Safe comments: ${analysis.safeCount}`);
-  logSteps.push('Analysis complete. Report generated.');
+    const analysis = analyzeComments(comments);
 
-  // Save to file
-  const date = new Date().toISOString().split('T')[0];
-  const logPath = path.join(__dirname, 'logs');
-  if (!fs.existsSync(logPath)) fs.mkdirSync(logPath);
-  const reportFile = path.join(logPath, `${date}_report.txt`);
+    logSteps.push(`Highly likely spam: ${analysis.highLikely.length}`);
+    logSteps.push(`Possible spam: ${analysis.possibleLikely.length}`);
+    logSteps.push(`Safe comments: ${analysis.safeCount}`);
+    logSteps.push('Analysis complete. Report generated.');
 
-  const content = `Video: ${videoLink}
-Date: ${new Date().toLocaleString()}
-Highly Likely: ${analysis.highLikely.length}
-Possible: ${analysis.possibleLikely.length}
-Safe: ${analysis.safeCount}
-Comments Total: ${comments.length}
+    // === Save Log Report ===
+    const date = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const logDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
 
-=== Highly Likely ===
-${analysis.highLikely.join('\n')}
+    const reportFile = path.join(logDir, `${timestamp}_report.txt`);
+    const fileContent = [
+      `Video: ${videoLink}`,
+      `Date: ${new Date().toLocaleString()}`,
+      `Highly Likely: ${analysis.highLikely.length}`,
+      `Possible: ${analysis.possibleLikely.length}`,
+      `Safe: ${analysis.safeCount}`,
+      `Comments Total: ${comments.length}`,
+      '',
+      '=== Highly Likely ===',
+      ...analysis.highLikely.map(c => `- ${c.text} (${c.reason})`),
+      '',
+      '=== Possible ===',
+      ...analysis.possibleLikely.map(c => `- ${c.text} (${c.reason})`),
+    ].join('\n');
 
-=== Possible ===
-${analysis.possibleLikely.join('\n')}
-`;
+    fs.writeFileSync(reportFile, fileContent);
+    logSteps.push(`Report saved: ${reportFile}`);
 
-  fs.writeFileSync(reportFile, content);
-  logSteps.push(`Report saved: ${reportFile}`);
-
-  return {
-    highLikely: analysis.highLikely,
-    possibleLikely: analysis.possibleLikely,
-    safeCount: analysis.safeCount,
-    logSteps,
-  };
+    return {
+      highLikely: analysis.highLikely.map(c => c.text),
+      possibleLikely: analysis.possibleLikely.map(c => c.text),
+      safeCount: analysis.safeCount,
+      logSteps,
+    };
+  } catch (err) {
+    logSteps.push(`❌ Error: ${err.message}`);
+    return {
+      highLikely: [],
+      possibleLikely: [],
+      safeCount: 0,
+      logSteps,
+    };
+  }
 });
 
+// === IPC: Stubbed Deletion Actions ===
 ipcMain.handle('delete-highly-likely', async () => {
-  // Simulated
   return '🧹 Deleted highly likely comments (stub).';
 });
 
 ipcMain.handle('delete-reviewed-comments', async () => {
-  // Simulated
   return '🗑️ Deleted reviewed comments (stub).';
 });
