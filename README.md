@@ -43,7 +43,7 @@ Built with [Electron](https://www.electronjs.org/), this tool uses the [YouTube 
 ### 1. Clone this repository
 
 ```bash
-git clone https://github.com/SigurdFPS/youtube-comment-cleaner.git
+git clone https://github.com/SigurdFPS/YouTube-Moderator-Bot.git
 cd youtube-comment-cleaner
 
 2. Install dependencies
