@@ -44,7 +44,7 @@ Built with [Electron](https://www.electronjs.org/), this tool uses the [YouTube 
 
 ```bash
 git clone https://github.com/SigurdFPS/YouTube-Moderator-Bot.git
-cd youtube-comment-cleaner
+cd YouTube-Moderator-Bot
 
 2. Install dependencies
 
