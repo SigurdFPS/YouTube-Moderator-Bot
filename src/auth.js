@@ -1,10 +1,14 @@
-require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { URL } = require('url');
 const { google } = require('googleapis');
 const electron = require('electron');
+
+// ✅ Explicitly load the correct .env file from userData
+require('dotenv').config({
+  path: path.join((electron.app || electron.remote.app).getPath('userData'), 'YouTubeCommentCleaner', '.env'),
+});
 
 const SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl'];
 
@@ -35,7 +39,7 @@ async function authorize() {
     try {
       const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
       oauth2Client.setCredentials(token);
-      await oauth2Client.getAccessToken(); // Will refresh token if expired
+      await oauth2Client.getAccessToken(); // Refresh if needed
       return oauth2Client;
     } catch (err) {
       console.warn('⚠️ Failed to refresh token:', err.message);
@@ -53,7 +57,7 @@ async function authorize() {
   try {
     electron.shell.openExternal(authUrl);
   } catch {
-    require('open')(authUrl); // fallback for CLI environments
+    require('open')(authUrl); // fallback
   }
 
   const code = await listenForOAuthCode();
