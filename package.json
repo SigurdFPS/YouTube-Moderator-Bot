@@ -2,7 +2,7 @@
   "name": "youtube-comment-cleaner",
   "version": "1.0.0",
   "description": "Open-source YouTube comment moderation bot that analyzes and removes likely spam or bot comments from your videos.",
-  "main": "main.js",
+  "main": "src/main.js",
   "author": {
     "name": "SigurdFPS",
     "url": "https://github.com/SigurdFPS"
@@ -11,14 +11,44 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build": "electron-packager . YouTubeCommentCleaner --platform=win32 --arch=x64 --out=dist --overwrite"
+    "build": "electron-builder --win --x64"
   },
   "dependencies": {
+    "dotenv": "^16.5.0",
     "electron": "^29.0.0",
-    "googleapis": "^132.0.0"
+    "googleapis": "^132.0.0",
+    "fs-extra": "^11.2.0",
+    "open": "^9.1.0"
   },
   "devDependencies": {
-    "electron-packager": "^17.1.1"
+    "electron-builder": "^24.13.1"
+  },
+  "build": {
+    "appId": "com.creator.commentcleaner",
+    "productName": "YouTube Comment Cleaner",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "index.html",
+      "assets/**/*",
+      "src/filters/**/*",
+      "blacklist_*.json",
+      "config.json",
+      "!node_modules/*/{test,tests,example,examples}",
+      "!**/*.md"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "keywords": [
     "youtube",
@@ -31,6 +61,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/SigurdFPS/youtube-comment-cleaner"
+    "url": "https://github.com/SigurdFPS/YouTube-Moderator-Bot"
   }
 }
