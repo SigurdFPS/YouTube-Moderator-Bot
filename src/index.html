@@ -72,11 +72,14 @@
       margin-bottom: 20px;
     }
 
-    #logBox, #highLikely, #possibleLikely, #safeCount {
+    #logBox, #highLikely, #possibleLikely, #safeCount,
+    #liveLogBox {
       background: #1a1a1a;
       padding: 10px;
       border: 1px solid #333;
       white-space: pre-wrap;
+      height: 150px;
+      overflow-y: auto;
     }
 
     .toast {
@@ -93,6 +96,17 @@
 
     .toast.show {
       opacity: 1;
+    }
+
+    .live-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    #stopLiveMonitor {
+      background: #c62828;
+      display: none;
     }
   </style>
 </head>
@@ -117,32 +131,47 @@
     <!-- Step 3: Main Interface -->
     <div id="step3" class="step">
       <div class="tabs">
-        <button class="tab-button active" onclick="switchTab('video')">🎬 Video Analysis</button>
-        <button class="tab-button" onclick="switchTab('live')">🔴 Live Mode</button>
+        <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
+        <button class="tab-button" data-tab="live">🔴 Live Mode</button>
       </div>
 
+      <!-- Video Analysis Tab -->
       <div id="video" class="tab-content active">
         <input type="text" id="videoLink" placeholder="Paste YouTube Video Link Here" />
         <div id="logBox">🔌 Bot ready.</div>
+
         <div class="section">
           <h4>Highly Likely Comments</h4>
           <div id="highLikely"></div>
         </div>
+
         <div class="section">
           <h4>Possible Comments</h4>
           <div id="possibleLikely"></div>
         </div>
+
         <div class="section">
           <h4>Safe Comments</h4>
           <div id="safeCount">0 comments marked safe.</div>
         </div>
+
         <button id="deleteHighBtn">🧹 Delete Highly Likely</button>
         <button id="reviewPossibleBtn">🔍 Review Possible</button>
         <button id="deleteReviewedBtn">🗑️ Delete Reviewed Comments</button>
       </div>
 
+      <!-- Live Mode Tab -->
       <div id="live" class="tab-content">
-        <p>🔧 Live chat moderation coming soon.</p>
+        <input id="liveVideoId" type="text" placeholder="Enter Live Video ID (from URL)" />
+        <div class="live-controls">
+          <button id="startLiveMonitor">🚨 Start Live Monitor</button>
+          <button id="stopLiveMonitor">🛑 Stop Monitoring</button>
+        </div>
+
+        <div class="section">
+          <h4>Live Chat Log</h4>
+          <div id="liveLogBox">🟢 Waiting for chat activity...</div>
+        </div>
       </div>
     </div>
 
