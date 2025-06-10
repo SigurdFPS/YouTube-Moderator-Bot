@@ -1,7 +1,63 @@
 const { google } = require('googleapis');
 const { getOAuthClient } = require('./auth');
+const fs = require('fs');
+const path = require('path');
 
 const youtube = google.youtube('v3');
+
+// 🔄 Load blacklist config based on mode
+function loadBlacklist(mode = 'video') {
+  const file = path.join(__dirname, 'src', 'filters', `blacklist_${mode}.json`);
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+  } catch {
+    return { highSpamIndicators: [], weakReplies: [] };
+  }
+}
+
+// 🧠 Spam Analysis (Live or Video mode)
+function analyzeComments(comments, mode = 'video') {
+  const seen = new Set();
+  const highLikely = [];
+  const possibleLikely = [];
+  const safe = [];
+
+  const { highSpamIndicators, weakReplies } = loadBlacklist(mode);
+
+  for (const comment of comments) {
+    const text = comment.text.trim().toLowerCase();
+
+    // Deduplication
+    if (seen.has(text)) {
+      highLikely.push({ ...comment, reason: 'Duplicate comment' });
+      continue;
+    }
+    seen.add(text);
+
+    const emojiCount = (text.match(/[\u{1F300}-\u{1FAFF}]/gu) || []).length;
+    const hasHighSpam = highSpamIndicators.some(keyword => text.includes(keyword));
+    const hasWeakReply = weakReplies.some(keyword => text === keyword || text.includes(keyword));
+    const isTooShort = text.length < 10;
+    const isHypeEmote = emojiCount >= 4 && !hasHighSpam && mode === 'live';
+
+    if (hasHighSpam && !isHypeEmote) {
+      highLikely.push({ ...comment, reason: 'High-risk phrase' });
+    } else if (emojiCount >= 6 && mode !== 'live') {
+      highLikely.push({ ...comment, reason: 'Emoji overload' });
+    } else if (hasWeakReply || isTooShort) {
+      possibleLikely.push({ ...comment, reason: 'Short or generic reply' });
+    } else {
+      safe.push(comment);
+    }
+  }
+
+  return {
+    highLikely,
+    possibleLikely,
+    safeCount: safe.length,
+    full: comments.length,
+  };
+}
 
 // 🚀 Fetch all comments for a given video
 async function fetchComments(videoId) {
@@ -37,61 +93,6 @@ async function fetchComments(videoId) {
   return comments;
 }
 
-// 🧠 Intelligent spam analysis logic
-function analyzeComments(comments) {
-  const seen = new Set();
-  const highLikely = [];
-  const possibleLikely = [];
-  const safe = [];
-
-  const highSpamIndicators = [
-    'been watching', 'source of inspiration', 'you always amaze me',
-    'thanks for your content', 'inspiring me daily', 'positive vibes only',
-  ];
-
-  const emojiSpam = ['💕', '🎂', '👑', '🦖', '💖', '🔥', '🎉', '🥰'];
-  const weakGenericReplies = ['thanks', 'amazing', 'cool', 'great video', 'love this', 'very useful'];
-
-  for (const comment of comments) {
-    const text = comment.text.trim().toLowerCase();
-
-    // Deduplication
-    if (seen.has(text)) {
-      highLikely.push({ ...comment, reason: 'Duplicate comment' });
-      continue;
-    }
-    seen.add(text);
-
-    const emojiCount = (text.match(/[\u{1F600}-\u{1F64F}]/gu) || []).length;
-    const highMatch = highSpamIndicators.some(keyword => text.includes(keyword));
-    const weakMatch = weakGenericReplies.some(keyword => text === keyword || text.includes(keyword));
-    const isTooShort = text.length < 10;
-
-    // Categorize
-    if (emojiCount >= 3 || highMatch) {
-      highLikely.push({ ...comment, reason: 'Emoji overload or high-risk phrase' });
-    } else if (weakMatch || isTooShort) {
-      possibleLikely.push({ ...comment, reason: 'Short or generic response' });
-    } else {
-      safe.push(comment);
-    }
-  }
-
-  return {
-    highLikely,
-    possibleLikely,
-    safeCount: safe.length,
-    full: comments.length,
-  };
-}
-
-// 🔍 Extract YouTube video ID from URL
-function extractVideoId(link) {
-  const url = new URL(link);
-  if (url.hostname === 'youtu.be') return url.pathname.substring(1);
-  return url.searchParams.get('v');
-}
-
 // 🧹 Delete comments by ID
 async function deleteComments(commentIds = []) {
   const auth = getOAuthClient();
@@ -110,6 +111,13 @@ async function deleteComments(commentIds = []) {
   }
 
   return results;
+}
+
+// 🔍 Extract YouTube video ID from URL
+function extractVideoId(link) {
+  const url = new URL(link);
+  if (url.hostname === 'youtu.be') return url.pathname.substring(1);
+  return url.searchParams.get('v');
 }
 
 module.exports = {
