@@ -221,25 +221,34 @@ ipcRenderer.on('live-log', (_event, payload) => {
   }
 });
 
-// ===== THEME TOGGLE =====
-
+// Theme toggle button (must be present in index.html)
 const themeToggle = document.getElementById('themeToggle');
+
+// ===== THEME LOGIC =====
 
 function applyTheme(theme) {
   document.body.classList.remove('light', 'dark');
   document.body.classList.add(theme);
-  themeToggle.textContent = theme === 'dark' ? '🌙 Dark Mode' : '🌞 Light Mode';
-  localStorage.setItem('theme', theme);
+  if (themeToggle) {
+    themeToggle.textContent = theme === 'dark' ? '🌙 Dark Mode' : '🌞 Light Mode';
+  }
+  window.api.saveConfig({ theme });
 }
 
-themeToggle.addEventListener('click', () => {
-  const current = document.body.classList.contains('dark') ? 'dark' : 'light';
-  const newTheme = current === 'dark' ? 'light' : 'dark';
-  applyTheme(newTheme);
-});
+async function loadAndApplyConfig() {
+  const config = await window.api.loadConfig();
+  const theme = config?.theme || 'light';
+  applyTheme(theme);
+}
 
-// On load
-window.addEventListener('DOMContentLoaded', () => {
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  applyTheme(savedTheme);
+if (themeToggle) {
+  themeToggle.addEventListener('click', async () => {
+    const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+    const newTheme = current === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+  });
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadAndApplyConfig();
 });
