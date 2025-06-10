@@ -32,45 +32,36 @@
 </head>
 <body>
   <h2>Step 1: Enter YouTube OAuth Credentials</h2>
+
   <label for="clientIdInput">Client ID:</label>
   <input id="clientIdInput" type="text" placeholder="YT_CLIENT_ID" />
 
   <label for="clientSecretInput">Client Secret:</label>
   <input id="clientSecretInput" type="text" placeholder="YT_CLIENT_SECRET" />
 
-  <button onclick="loadCredentials()">Save and Continue</button>
+  <button id="saveButton">Save and Continue</button>
 
   <script>
-    const fs = require('fs');
-    const path = require('path');
-    const { ipcRenderer } = require('electron');
+    document.getElementById('saveButton').addEventListener('click', async () => {
+      const clientId = document.getElementById('clientIdInput').value.trim();
+      const clientSecret = document.getElementById('clientSecretInput').value.trim();
 
-    function loadCredentials() {
-      const id = document.getElementById('clientIdInput').value.trim();
-      const secret = document.getElementById('clientSecretInput').value.trim();
-
-      if (!id || !secret) {
+      if (!clientId || !clientSecret) {
         alert('Both fields are required.');
         return;
       }
 
-      const content = `YT_CLIENT_ID=${id}\nYT_CLIENT_SECRET=${secret}\nGOOGLE_REDIRECT_URI=http://localhost:42813\nREDIRECT_PORT=42813`;
-
-      const appDataPath = process.env.APPDATA || (process.platform === 'darwin' 
-        ? path.join(process.env.HOME, 'Library/Preferences') 
-        : path.join(process.env.HOME, '.config'));
-
-      const saveDir = path.join(appDataPath, 'YouTubeCommentCleaner');
-      const envPath = path.join(saveDir, '.env');
-
       try {
-        if (!fs.existsSync(saveDir)) fs.mkdirSync(saveDir, { recursive: true });
-        fs.writeFileSync(envPath, content);
-        ipcRenderer.send('load-step-2');
+        const result = await window.api.saveEnvFile(clientId, clientSecret);
+        if (result.success) {
+          window.location.href = 'step2.html';
+        } else {
+          alert('❌ Failed to save: ' + result.message);
+        }
       } catch (err) {
-        alert('Failed to save credentials: ' + err.message);
+        alert('❌ Error saving credentials: ' + err.message);
       }
-    }
+    });
   </script>
 </body>
 </html>
