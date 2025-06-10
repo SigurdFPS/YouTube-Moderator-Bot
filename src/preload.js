@@ -1,20 +1,21 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-  // === Auth ===
+  // === OAuth & Config ===
   authorizeYouTube: () => ipcRenderer.invoke('authorize-youtube'),
+  loadConfig: () => ipcRenderer.invoke('load-config'),
+  saveConfig: (config) => ipcRenderer.send('save-config', config),
 
   // === Comment Analysis ===
   analyzeComments: (videoLink) => ipcRenderer.invoke('analyze-comments', videoLink),
 
-  // === Deletion ===
-  deleteHighlyLikely: () => ipcRenderer.invoke('delete-highly-likely'),
-  deleteReviewedComments: () => ipcRenderer.invoke('delete-reviewed-comments'),
-
   // === Manual Review Support ===
   getReviewComments: () => ipcRenderer.invoke('get-review-comments'),
-  submitReviewedComments: (commentIds) =>
-    ipcRenderer.send('submit-reviewed-comments', commentIds),
+  submitReviewedComments: (commentIds) => ipcRenderer.send('submit-reviewed-comments', commentIds),
+
+  // === Comment Deletion ===
+  deleteHighlyLikely: () => ipcRenderer.invoke('delete-highly-likely'),
+  deleteReviewedComments: () => ipcRenderer.invoke('delete-reviewed-comments'),
 
   // === Live Chat Monitoring ===
   startLiveMonitor: (videoId) => ipcRenderer.send('start-live-monitor', videoId),
@@ -28,10 +29,6 @@ contextBridge.exposeInMainWorld('api', {
   onLiveMonitorStopped: (callback) => {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
-
-  // === Config Persistence (Theme, Font, Tokens, etc) ===
-  loadConfig: () => ipcRenderer.invoke('load-config'),
-  saveConfig: (config) => ipcRenderer.send('save-config', config),
 
   // === Filter Management ===
   addFilterEntry: (mode, entry) => ipcRenderer.invoke('add-filter-entry', mode, entry),
