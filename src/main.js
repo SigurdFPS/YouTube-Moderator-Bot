@@ -14,6 +14,7 @@ const {
   startLiveChatMonitor,
   stopPolling,
 } = require('./liveChat');
+const { loadConfig, saveConfig } = require('./config');
 
 let mainWindow;
 let lastAnalyzed = {
@@ -77,7 +78,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     lastAnalyzed.possibleLikely = analysis.possibleLikely;
 
     const summary = [
-      `🚩 Highly likely spam: ${analysis.highLikely.length}`,
+      `🚩 Highly likely spam: ${analysis.highlyLikely.length}`,
       `⚠️ Possible spam: ${analysis.possibleLikely.length}`,
       `✅ Safe comments: ${analysis.safeCount}`,
     ];
@@ -176,4 +177,16 @@ ipcMain.on('stop-live-monitor', () => {
   mainWindow.webContents.send('live-log', '🔴 Monitoring stopped.');
   mainWindow.webContents.send('live-monitor-stopped');
   writeLog('🔴 Live monitor stopped');
+});
+
+// === IPC: Config Persistence ===
+ipcMain.handle('get-config', async () => {
+  return loadConfig();
+});
+
+ipcMain.handle('set-config', async (_event, updatedValues) => {
+  const current = loadConfig();
+  const merged = { ...current, ...updatedValues };
+  saveConfig(merged);
+  return merged;
 });
