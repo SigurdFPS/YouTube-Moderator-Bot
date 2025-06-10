@@ -1,40 +1,36 @@
 // ===== DOM ELEMENTS =====
 
-// Step flow
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
 
-// Auth flow
 const clientIdInput = document.getElementById('clientIdInput');
 const clientSecretInput = document.getElementById('clientSecretInput');
 const authBtn = document.getElementById('authBtn');
 const authStatus = document.getElementById('authStatus');
 
-// Tabs
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabContents = document.querySelectorAll('.tab-content');
 
-// Video analysis UI
 const videoLinkInput = document.getElementById('videoLink');
 const logBox = document.getElementById('logBox');
 const highLikelyBox = document.getElementById('highLikely');
 const possibleLikelyBox = document.getElementById('possibleLikely');
 const safeCountLine = document.getElementById('safeCount');
 
-// Buttons
 const deleteHighBtn = document.getElementById('deleteHighBtn');
 const reviewPossibleBtn = document.getElementById('reviewPossibleBtn');
 const deleteReviewedBtn = document.getElementById('deleteReviewedBtn');
 
-// Toast
 const toast = document.getElementById('toast');
 
-// Live Mode UI
 const startBtn = document.getElementById('startLiveMonitor');
 const stopBtn = document.getElementById('stopLiveMonitor');
 const liveVideoIdInput = document.getElementById('liveVideoId');
 const liveLogBox = document.getElementById('liveLogBox');
+
+const themeToggle = document.getElementById('themeToggle');
+const fontSelect = document.getElementById('fontSelect');
 
 // ===== UTILS =====
 
@@ -51,7 +47,7 @@ function appendLog(line) {
 
 function switchTab(tabId) {
   tabButtons.forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tabId));
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
   });
   tabContents.forEach(content => {
     content.classList.toggle('active', content.id === tabId);
@@ -64,10 +60,7 @@ window.loadCredentials = async () => {
   const clientId = clientIdInput.value.trim();
   const clientSecret = clientSecretInput.value.trim();
 
-  if (!clientId || !clientSecret) {
-    showToast('❗ Please enter both Client ID and Secret');
-    return;
-  }
+  if (!clientId || !clientSecret) return showToast('❗ Please enter both Client ID and Secret');
 
   const fs = require('fs');
   const path = require('path');
@@ -80,11 +73,10 @@ REDIRECT_PORT=42813`;
 
   try {
     fs.writeFileSync(dotenvPath, envContent);
-    console.log('.env saved.');
     step1.classList.remove('active');
     step2.classList.add('active');
+    console.log('.env saved.');
   } catch (err) {
-    console.error('Failed to save .env:', err.message);
     showToast('❌ Failed to save credentials');
   }
 };
@@ -104,7 +96,7 @@ authBtn.addEventListener('click', async () => {
   }
 });
 
-// ===== Step 3: Video Analysis Tab =====
+// ===== Step 3: Video Analysis =====
 
 videoLinkInput.addEventListener('change', async () => {
   const link = videoLinkInput.value.trim();
@@ -149,7 +141,7 @@ deleteReviewedBtn.addEventListener('click', async () => {
   showToast(msg);
 });
 
-// ===== Live Mode Tab =====
+// ===== Live Mode =====
 
 let activeMessageCache = new Set();
 
@@ -161,9 +153,8 @@ function appendLiveLog(line) {
 }
 
 startBtn.addEventListener('click', async () => {
-  const videoId = liveVideoIdInput?.value.trim() || null;
-
-  appendLiveLog(`🎬 Starting live chat monitoring${videoId ? ` for video ID: ${videoId}` : ''}...`);
+  const videoId = liveVideoIdInput.value.trim();
+  appendLiveLog(`🎬 Starting live chat monitoring${videoId ? ` for ${videoId}` : ''}...`);
   await window.api.startLiveMonitor(videoId);
   startBtn.style.display = 'none';
   stopBtn.style.display = 'inline-block';
@@ -179,15 +170,66 @@ stopBtn.addEventListener('click', async () => {
 // ===== Tab Switching =====
 
 tabButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const target = btn.dataset.tab;
-    switchTab(target);
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ===== IPC Live Sync =====
+
+const { ipcRenderer } = require('electron');
+
+ipcRenderer.on('live-log', (_event, payload) => {
+  if (typeof payload === 'string') return appendLiveLog(payload);
+
+  payload.forEach(msg => {
+    const tag = msg.isLikelySpam ? '🚫' : '💬';
+    appendLiveLog(`${tag} [${msg.author}]: ${msg.text}`);
+    if (msg.isLikelySpam) {
+      window.api.deleteLiveComment(msg.id).then(() => {
+        appendLiveLog(`🗑️ Deleted live spam from ${msg.author}`);
+      });
+    }
   });
 });
 
-// ===== On Load: Auto Step Skip if Authenticated =====
+// ===== Theme and Font Config =====
 
-window.addEventListener('DOMContentLoaded', () => {
+function applyTheme(theme) {
+  document.body.classList.remove('light', 'dark');
+  document.body.classList.add(theme);
+  themeToggle.textContent = theme === 'dark' ? '🌙 Dark Mode' : '🌞 Light Mode';
+  window.api.saveConfig({ theme });
+}
+
+function applyFontTheme(fontTheme) {
+  document.body.dataset.fontTheme = fontTheme;
+  window.api.saveConfig({ fontTheme });
+}
+
+async function loadAndApplyConfig() {
+  const config = await window.api.loadConfig();
+  const theme = config?.theme || 'light';
+  const fontTheme = config?.fontTheme || 'default';
+  applyTheme(theme);
+  applyFontTheme(fontTheme);
+  if (fontSelect) fontSelect.value = fontTheme;
+}
+
+// ===== Theme/Font Toggles =====
+
+themeToggle?.addEventListener('click', () => {
+  const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+fontSelect?.addEventListener('change', (e) => {
+  applyFontTheme(e.target.value);
+});
+
+// ===== Auto Auth + Theme on Load =====
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadAndApplyConfig();
+
   const fs = require('fs');
   const path = require('path');
   const tokenPath = path.join(__dirname, 'tokens.json');
@@ -196,59 +238,7 @@ window.addEventListener('DOMContentLoaded', () => {
     step1.classList.remove('active');
     step2.classList.remove('active');
     step3.classList.add('active');
-    appendLog('✅ YouTube already authorized (tokens.json found)');
+    appendLog('✅ YouTube already authorized');
     showToast('Auto-authorized');
   }
-});
-
-// ===== IPC Live Log Sync from Main =====
-
-const { ipcRenderer } = require('electron');
-ipcRenderer.on('live-log', (_event, payload) => {
-  if (typeof payload === 'string') {
-    appendLiveLog(payload);
-  } else if (Array.isArray(payload)) {
-    payload.forEach(msg => {
-      const tag = msg.isLikelySpam ? '🚫' : '💬';
-      appendLiveLog(`${tag} [${msg.author}]: ${msg.text}`);
-
-      if (msg.isLikelySpam) {
-        window.api.deleteLiveComment(msg.id).then(() => {
-          appendLiveLog(`🗑️ Deleted live spam from ${msg.author}`);
-        });
-      }
-    });
-  }
-});
-
-// Theme toggle button (must be present in index.html)
-const themeToggle = document.getElementById('themeToggle');
-
-// ===== THEME LOGIC =====
-
-function applyTheme(theme) {
-  document.body.classList.remove('light', 'dark');
-  document.body.classList.add(theme);
-  if (themeToggle) {
-    themeToggle.textContent = theme === 'dark' ? '🌙 Dark Mode' : '🌞 Light Mode';
-  }
-  window.api.saveConfig({ theme });
-}
-
-async function loadAndApplyConfig() {
-  const config = await window.api.loadConfig();
-  const theme = config?.theme || 'light';
-  applyTheme(theme);
-}
-
-if (themeToggle) {
-  themeToggle.addEventListener('click', async () => {
-    const current = document.body.classList.contains('dark') ? 'dark' : 'light';
-    const newTheme = current === 'dark' ? 'light' : 'dark';
-    applyTheme(newTheme);
-  });
-}
-
-window.addEventListener('DOMContentLoaded', async () => {
-  await loadAndApplyConfig();
 });
