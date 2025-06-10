@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-
+const fs = require('fs');
 const { authorize } = require('./auth');
 const {
   fetchComments,
@@ -14,13 +14,33 @@ const {
   startLiveChatMonitor,
   stopPolling,
 } = require('./liveChat');
-const { loadConfig, saveConfig } = require('./config');
+
+const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
 
 let mainWindow;
 let lastAnalyzed = {
   highlyLikely: [],
   possibleLikely: [],
 };
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Failed to load config:', err);
+  }
+  return { theme: 'default' };
+}
+
+function saveConfig(config) {
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  } catch (err) {
+    console.error('Failed to save config:', err);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -36,6 +56,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -45,7 +66,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// === IPC: YouTube OAuth Authorization ===
+// === IPC: YouTube OAuth ===
 ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
@@ -57,35 +78,34 @@ ipcMain.handle('authorize-youtube', async () => {
   }
 });
 
-// === IPC: Analyze YouTube Comments ===
+// === IPC: Comment Analysis ===
 ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   const logSteps = [];
 
   try {
     const videoId = extractVideoId(videoLink);
-    if (!videoId) throw new Error('Invalid YouTube link or missing video ID');
+    if (!videoId) throw new Error('Invalid YouTube link');
 
-    writeLog(`🎯 Video received: ${videoLink}`);
-    logSteps.push(`🎯 Video received: ${videoLink}`);
+    writeLog(`🎯 Video: ${videoLink}`);
+    logSteps.push(`🎯 Video: ${videoLink}`);
 
     const comments = await fetchComments(videoId);
-    writeLog(`📥 Fetched ${comments.length} comments`);
-    logSteps.push(`📥 Fetched ${comments.length} comments`);
+    logSteps.push(`📥 ${comments.length} comments fetched`);
+    writeLog(`📥 ${comments.length} comments fetched`);
 
     const analysis = analyzeComments(comments);
-
     lastAnalyzed.highlyLikely = analysis.highLikely;
     lastAnalyzed.possibleLikely = analysis.possibleLikely;
 
     const summary = [
-      `🚩 Highly likely spam: ${analysis.highlyLikely.length}`,
-      `⚠️ Possible spam: ${analysis.possibleLikely.length}`,
-      `✅ Safe comments: ${analysis.safeCount}`,
+      `🚩 Highly likely: ${analysis.highLikely.length}`,
+      `⚠️ Possible: ${analysis.possibleLikely.length}`,
+      `✅ Safe: ${analysis.safeCount}`,
     ];
 
     writeGroup(summary);
     logSteps.push(...summary);
-    logSteps.push('🧠 Analysis complete. Generating report...');
+    logSteps.push('🧠 Report being generated...');
 
     const reportFile = generateReport({
       videoLink,
@@ -94,7 +114,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
       safeCount: analysis.safeCount,
     });
 
-    logSteps.push(`📄 Report saved: ${reportFile}`);
+    logSteps.push(`📄 Saved: ${reportFile}`);
     writeLog(`📄 Report saved: ${reportFile}`);
 
     return {
@@ -104,7 +124,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
       logSteps,
     };
   } catch (err) {
-    writeLog(`❌ Error analyzing video: ${err.message}`);
+    writeLog(`❌ Error: ${err.message}`);
     logSteps.push(`❌ Error: ${err.message}`);
     return {
       highLikely: [],
@@ -115,18 +135,15 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   }
 });
 
-// === IPC: Deletion ===
+// === IPC: Deletion Logic ===
 ipcMain.handle('delete-highly-likely', async () => {
   if (!lastAnalyzed.highlyLikely.length) {
-    return '⚠️ No highly likely comments available to delete.';
+    return '⚠️ Nothing to delete.';
   }
 
-  const deleted = await deleteComments(
-    lastAnalyzed.highlyLikely.map(c => c.id)
-  );
-
-  writeLog(`🧹 Deleted ${deleted.length} highly likely comments`);
-  return `🧹 Deleted ${deleted.length} highly likely comments`;
+  const deleted = await deleteComments(lastAnalyzed.highlyLikely.map(c => c.id));
+  writeLog(`🧹 Deleted ${deleted.length}`);
+  return `🧹 Deleted ${deleted.length}`;
 });
 
 ipcMain.handle('get-review-comments', () => {
@@ -135,19 +152,19 @@ ipcMain.handle('get-review-comments', () => {
 
 ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   const deleted = await deleteComments(idsToDelete);
-  writeLog(`🗑️ Manually deleted ${deleted.length} reviewed comments`);
+  writeLog(`🗑️ Manually deleted ${deleted.length}`);
 });
 
 ipcMain.handle('delete-reviewed-comments', async () => {
-  return '🧼 Please use the Review button and select comments manually.';
+  return '🧼 Use the review window to mark comments.';
 });
 
-// === IPC: Live Chat Monitoring ===
+// === IPC: Live Chat ===
 let liveMonitorActive = false;
 
 ipcMain.on('start-live-monitor', async (_event, videoId) => {
   if (liveMonitorActive) {
-    mainWindow.webContents.send('live-log', '⚠️ Already monitoring.');
+    mainWindow.webContents.send('live-log', '⚠️ Already monitoring');
     return;
   }
 
@@ -156,11 +173,11 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
   await startLiveChatMonitor(async ({ highLikely, possibleLikely, all }) => {
     for (const msg of highLikely) {
       await deleteComments([msg.id]);
-      mainWindow.webContents.send('live-log', `🛑 Deleted spam: ${msg.text}`);
+      mainWindow.webContents.send('live-log', `🛑 Deleted: ${msg.text}`);
     }
 
     for (const msg of possibleLikely) {
-      mainWindow.webContents.send('live-log', `⚠️ Suspected: ${msg.text}`);
+      mainWindow.webContents.send('live-log', `⚠️ Suspect: ${msg.text}`);
     }
 
     for (const msg of all) {
@@ -174,19 +191,18 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
 ipcMain.on('stop-live-monitor', () => {
   stopPolling();
   liveMonitorActive = false;
-  mainWindow.webContents.send('live-log', '🔴 Monitoring stopped.');
+  mainWindow.webContents.send('live-log', '🔴 Stopped');
   mainWindow.webContents.send('live-monitor-stopped');
-  writeLog('🔴 Live monitor stopped');
+  writeLog('🔴 Monitor stopped');
 });
 
-// === IPC: Config Persistence ===
-ipcMain.handle('get-config', async () => {
+// === IPC: Config ===
+ipcMain.handle('load-config', () => {
   return loadConfig();
 });
 
-ipcMain.handle('set-config', async (_event, updatedValues) => {
+ipcMain.on('save-config', (_event, newConfig) => {
   const current = loadConfig();
-  const merged = { ...current, ...updatedValues };
+  const merged = { ...current, ...newConfig };
   saveConfig(merged);
-  return merged;
 });
