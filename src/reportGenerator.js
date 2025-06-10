@@ -1,22 +1,22 @@
 const fs = require('fs');
 const path = require('path');
 
+const logDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
+
 /**
- * Generates a formatted report of the analyzed comments.
- * @param {string} videoLink - Full video URL.
- * @param {Array} highLikely - Array of flagged high-likelihood spam comments.
- * @param {Array} possibleLikely - Array of flagged possible spam comments.
- * @param {number} safeCount - Number of comments not flagged.
- * @returns {string} The path to the saved report file.
+ * Generates a detailed report for static video analysis.
+ * @param {Object} params
+ * @param {string} params.videoLink
+ * @param {Array} params.highLikely
+ * @param {Array} params.possibleLikely
+ * @param {number} params.safeCount
+ * @returns {string} path to saved report
  */
 function generateReport({ videoLink, highLikely, possibleLikely, safeCount }) {
   const now = new Date();
   const timestamp = now.toISOString().replace(/[:.]/g, '-');
   const dateStr = now.toLocaleString();
-
-  const logDir = path.join(__dirname, 'logs');
-  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
-
   const reportFilePath = path.join(logDir, `${timestamp}_report.txt`);
 
   const reportLines = [
@@ -45,6 +45,28 @@ function generateReport({ videoLink, highLikely, possibleLikely, safeCount }) {
   return reportFilePath;
 }
 
+/**
+ * Appends a real-time entry to a Live Mode session report file.
+ * Creates file on first write.
+ * @param {Object} msg
+ * @param {string} msg.text
+ * @param {string} msg.reason
+ * @param {string} [msg.author]
+ * @param {boolean} isHighLikely
+ */
+function appendLiveReport(msg, isHighLikely) {
+  const today = new Date().toISOString().split('T')[0];
+  const liveLogPath = path.join(logDir, `${today}_live_mode.txt`);
+
+  const time = new Date().toLocaleTimeString();
+  const author = msg.author ? `(${msg.author})` : '';
+  const label = isHighLikely ? '🛑 SPAM' : '⚠️ SUSPECT';
+  const line = `[${time}] ${label} ${author}: ${msg.text} [Reason: ${msg.reason}]`;
+
+  fs.appendFileSync(liveLogPath, line + '\n', 'utf-8');
+}
+
 module.exports = {
   generateReport,
+  appendLiveReport,
 };
