@@ -13,20 +13,24 @@ contextBridge.exposeInMainWorld('api', {
 
   // === Manual Review Support ===
   getReviewComments: () => ipcRenderer.invoke('get-review-comments'),
-  submitReviewedComments: (commentIds) => ipcRenderer.send('submit-reviewed-comments', commentIds),
+  submitReviewedComments: (commentIds) =>
+    ipcRenderer.send('submit-reviewed-comments', commentIds),
 
   // === Live Chat Monitoring ===
   startLiveMonitor: (videoId) => ipcRenderer.send('start-live-monitor', videoId),
   stopLiveMonitor: () => ipcRenderer.send('stop-live-monitor'),
 
-  // Subscribe to live chat messages
+  // Live chat message feed from main process
   onLiveChatMessage: (callback) => {
     ipcRenderer.removeAllListeners('live-chat-message');
     ipcRenderer.on('live-chat-message', (_, msg) => callback(msg));
   },
 
-  // Subscribe to live monitor status
+  // Listen once for monitor stop
   onLiveMonitorStopped: (callback) => {
     ipcRenderer.once('live-monitor-stopped', () => callback());
-  }
+  },
+
+  // Spam deletion during live (if needed in renderer directly)
+  deleteLiveComment: (commentId) => ipcRenderer.invoke('delete-live-comment', commentId),
 });
