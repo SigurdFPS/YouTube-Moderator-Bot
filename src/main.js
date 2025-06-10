@@ -10,6 +10,10 @@ const {
 } = require('./bot');
 const { generateReport } = require('./reportGenerator');
 const { writeLog, writeGroup } = require('./logger');
+const {
+  startLiveChatMonitor,
+  stopPolling,
+} = require('./liveChat');
 
 let mainWindow;
 let lastAnalyzed = {
@@ -69,7 +73,6 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
 
     const analysis = analyzeComments(comments);
 
-    // Store for later deletion or review
     lastAnalyzed.highlyLikely = analysis.highLikely;
     lastAnalyzed.possibleLikely = analysis.possibleLikely;
 
@@ -111,7 +114,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   }
 });
 
-// === IPC: Real Deletion of Highly Likely Comments ===
+// === IPC: Deletion ===
 ipcMain.handle('delete-highly-likely', async () => {
   if (!lastAnalyzed.highlyLikely.length) {
     return '⚠️ No highly likely comments available to delete.';
@@ -125,71 +128,52 @@ ipcMain.handle('delete-highly-likely', async () => {
   return `🧹 Deleted ${deleted.length} highly likely comments`;
 });
 
-// === IPC: Open review modal, provide comment list ===
 ipcMain.handle('get-review-comments', () => {
   return lastAnalyzed.possibleLikely;
 });
 
-// === IPC: Delete selected comments after manual review ===
 ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   const deleted = await deleteComments(idsToDelete);
   writeLog(`🗑️ Manually deleted ${deleted.length} reviewed comments`);
 });
 
-// === IPC: Stub fallback for Delete Reviewed button ===
 ipcMain.handle('delete-reviewed-comments', async () => {
   return '🧼 Please use the Review button and select comments manually.';
 });
 
-// === LIVE CHAT MONITORING ===
-const { startLiveChatListener, stopLiveChatListener } = require('./liveChat');
+// === IPC: Live Chat Monitoring ===
+let liveMonitorActive = false;
 
-let liveChatInterval = null;
-let recentLiveMessages = new Set();
-
-ipcMain.handle('start-live-monitor', async () => {
-  if (liveChatInterval) return '⚠️ Already monitoring live chat.';
-
-  try {
-    const startInfo = await startLiveChatListener();
-    if (!startInfo || !startInfo.liveChatId) throw new Error('Live chat not found.');
-
-    writeLog(`🟢 Monitoring started for liveChatId: ${startInfo.liveChatId}`);
-    recentLiveMessages.clear();
-
-    liveChatInterval = setInterval(async () => {
-      const newMessages = await startLiveChatListener(startInfo.liveChatId);
-
-      for (const msg of newMessages) {
-        if (recentLiveMessages.has(msg.text)) continue;
-        recentLiveMessages.add(msg.text);
-
-        if (msg.isLikelySpam) {
-          await deleteComments([msg.id]);
-          mainWindow.webContents.send('live-log', `🛑 Deleted spam: ${msg.text}`);
-        } else {
-          mainWindow.webContents.send('live-log', `💬 ${msg.text}`);
-        }
-
-        // Keep memory usage low
-        if (recentLiveMessages.size > 100) {
-          recentLiveMessages = new Set([...recentLiveMessages].slice(-50));
-        }
-      }
-    }, 5000);
-
-    return '✅ Live monitoring started.';
-  } catch (err) {
-    return `❌ Failed to start live monitor: ${err.message}`;
+ipcMain.on('start-live-monitor', async (_event, videoId) => {
+  if (liveMonitorActive) {
+    mainWindow.webContents.send('live-log', '⚠️ Already monitoring.');
+    return;
   }
+
+  liveMonitorActive = true;
+
+  await startLiveChatMonitor(async ({ highLikely, possibleLikely, all }) => {
+    for (const msg of highLikely) {
+      await deleteComments([msg.id]);
+      mainWindow.webContents.send('live-log', `🛑 Deleted spam: ${msg.text}`);
+    }
+
+    for (const msg of possibleLikely) {
+      mainWindow.webContents.send('live-log', `⚠️ Suspected: ${msg.text}`);
+    }
+
+    for (const msg of all) {
+      mainWindow.webContents.send('live-log', `💬 ${msg.author}: ${msg.text}`);
+    }
+  });
+
+  writeLog('🟢 Live monitor started');
 });
 
-ipcMain.handle('stop-live-monitor', async () => {
-  if (liveChatInterval) {
-    clearInterval(liveChatInterval);
-    liveChatInterval = null;
-    writeLog('🔴 Live monitoring stopped.');
-    return '🔴 Live monitoring stopped.';
-  }
-  return '⚠️ No live monitor active.';
+ipcMain.on('stop-live-monitor', () => {
+  stopPolling();
+  liveMonitorActive = false;
+  mainWindow.webContents.send('live-log', '🔴 Monitoring stopped.');
+  mainWindow.webContents.send('live-monitor-stopped');
+  writeLog('🔴 Live monitor stopped');
 });
