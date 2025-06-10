@@ -140,3 +140,56 @@ ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
 ipcMain.handle('delete-reviewed-comments', async () => {
   return '🧼 Please use the Review button and select comments manually.';
 });
+
+// === LIVE CHAT MONITORING ===
+const { startLiveChatListener, stopLiveChatListener } = require('./liveChat');
+
+let liveChatInterval = null;
+let recentLiveMessages = new Set();
+
+ipcMain.handle('start-live-monitor', async () => {
+  if (liveChatInterval) return '⚠️ Already monitoring live chat.';
+
+  try {
+    const startInfo = await startLiveChatListener();
+    if (!startInfo || !startInfo.liveChatId) throw new Error('Live chat not found.');
+
+    writeLog(`🟢 Monitoring started for liveChatId: ${startInfo.liveChatId}`);
+    recentLiveMessages.clear();
+
+    liveChatInterval = setInterval(async () => {
+      const newMessages = await startLiveChatListener(startInfo.liveChatId);
+
+      for (const msg of newMessages) {
+        if (recentLiveMessages.has(msg.text)) continue;
+        recentLiveMessages.add(msg.text);
+
+        if (msg.isLikelySpam) {
+          await deleteComments([msg.id]);
+          mainWindow.webContents.send('live-log', `🛑 Deleted spam: ${msg.text}`);
+        } else {
+          mainWindow.webContents.send('live-log', `💬 ${msg.text}`);
+        }
+
+        // Keep memory usage low
+        if (recentLiveMessages.size > 100) {
+          recentLiveMessages = new Set([...recentLiveMessages].slice(-50));
+        }
+      }
+    }, 5000);
+
+    return '✅ Live monitoring started.';
+  } catch (err) {
+    return `❌ Failed to start live monitor: ${err.message}`;
+  }
+});
+
+ipcMain.handle('stop-live-monitor', async () => {
+  if (liveChatInterval) {
+    clearInterval(liveChatInterval);
+    liveChatInterval = null;
+    writeLog('🔴 Live monitoring stopped.');
+    return '🔴 Live monitoring stopped.';
+  }
+  return '⚠️ No live monitor active.';
+});
