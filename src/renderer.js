@@ -161,13 +161,9 @@ function appendLiveLog(line) {
 }
 
 startBtn.addEventListener('click', async () => {
-  const videoId = liveVideoIdInput.value.trim();
-  if (!videoId) {
-    showToast('❗ Enter a live video ID first');
-    return;
-  }
+  const videoId = liveVideoIdInput?.value.trim() || null;
 
-  appendLiveLog(`🎬 Monitoring chat for video: ${videoId}`);
+  appendLiveLog(`🎬 Starting live chat monitoring${videoId ? ` for video ID: ${videoId}` : ''}...`);
   await window.api.startLiveMonitor(videoId);
   startBtn.style.display = 'none';
   stopBtn.style.display = 'inline-block';
@@ -175,7 +171,7 @@ startBtn.addEventListener('click', async () => {
 
 stopBtn.addEventListener('click', async () => {
   await window.api.stopLiveMonitor();
-  appendLiveLog(`🛑 Stopped monitoring`);
+  appendLiveLog(`🛑 Stopped live chat monitoring`);
   startBtn.style.display = 'inline-block';
   stopBtn.style.display = 'none';
 });
@@ -208,6 +204,19 @@ window.addEventListener('DOMContentLoaded', () => {
 // ===== IPC Live Log Sync from Main =====
 
 const { ipcRenderer } = require('electron');
-ipcRenderer.on('live-log', (_event, line) => {
-  appendLiveLog(line);
+ipcRenderer.on('live-log', (_event, payload) => {
+  if (typeof payload === 'string') {
+    appendLiveLog(payload);
+  } else if (Array.isArray(payload)) {
+    payload.forEach(msg => {
+      const tag = msg.isLikelySpam ? '🚫' : '💬';
+      appendLiveLog(`${tag} [${msg.author}]: ${msg.text}`);
+
+      if (msg.isLikelySpam) {
+        window.api.deleteLiveComment(msg.id).then(() => {
+          appendLiveLog(`🗑️ Deleted live spam from ${msg.author}`);
+        });
+      }
+    });
+  }
 });
