@@ -98,7 +98,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     lastAnalyzed.possibleLikely = analysis.possibleLikely;
 
     const summary = [
-      `🚩 Highly likely: ${analysis.highlyLikely.length}`,
+      `🚩 Highly likely: ${analysis.highLikely.length}`,
       `⚠️ Possible: ${analysis.possibleLikely.length}`,
       `✅ Safe: ${analysis.safeCount}`,
     ];
@@ -118,7 +118,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     writeLog(`📄 Report saved: ${reportFile}`, 'video');
 
     return {
-      highLikely: analysis.highlyLikely.map(c => c.text),
+      highLikely: analysis.highLikely.map(c => c.text),
       possibleLikely: analysis.possibleLikely.map(c => c.text),
       safeCount: analysis.safeCount,
       logSteps,
