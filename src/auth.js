@@ -2,119 +2,102 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
-const readline = require('readline');
+const http = require('http');
+const { URL } = require('url');
 
 const SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl'];
 const TOKEN_PATH = path.join(__dirname, 'tokens.json');
 
-let oauth2Client = null; // Correct variable name
+let oauth2Client = null;
 
-/**
- * Creates and returns an OAuth2 client.
- * This should typically be called once at application startup.
- */
 function createOAuthClient() {
   const clientId = process.env.YT_CLIENT_ID;
   const clientSecret = process.env.YT_CLIENT_SECRET;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-  
-  if (!clientId || !clientSecret) {
-    throw new Error('Missing YT_CLIENT_ID or YT_CLIENT_SECRET in .env file. Please check your configuration.');
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    throw new Error('Missing credentials in .env: YT_CLIENT_ID, YT_CLIENT_SECRET, or GOOGLE_REDIRECT_URI');
   }
 
-  // Assign to the module-level oauth2Client
   oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
   return oauth2Client;
 }
 
-/**
- * Handles the authorization process.
- * Attempts to load existing tokens; if unsuccessful, initiates a new OAuth flow.
- * @returns {google.auth.OAuth2} The authorized OAuth2 client.
- */
 async function authorize() {
-  // Ensure the OAuth client is created
-  if (!oauth2Client) {
-    createOAuthClient();
-  }
+  if (!oauth2Client) createOAuthClient();
 
-  // --- Attempt to load existing tokens ---
+  // Try to load existing tokens
   if (fs.existsSync(TOKEN_PATH)) {
     try {
       const token = JSON.parse(fs.readFileSync(TOKEN_PATH));
-      oauth2Client.setCredentials(token); // Use oauth2Client
-      
-      // Try to refresh the token to check validity
-      await oauth2Client.getAccessToken(); 
-      console.log('Successfully refreshed access token from existing tokens.');
-      return oauth2Client; // If successful, we're authorized
+      oauth2Client.setCredentials(token);
+      await oauth2Client.getAccessToken(); // triggers refresh if needed
+      return oauth2Client;
     } catch (err) {
-      console.error('Failed to refresh token or existing token invalid:', err.message);
-      console.log('Proceeding to re-authorize...');
-      try {
-        fs.unlinkSync(TOKEN_PATH); // Delete the invalid token file
-        console.log('Old invalid token file deleted.');
-      } catch (unlinkErr) {
-        console.warn('Could not delete old token file (might not exist or permissions issue):', unlinkErr.message);
-      }
+      console.warn('⚠️ Failed to refresh token:', err.message);
+      fs.unlinkSync(TOKEN_PATH);
     }
   }
 
-  // --- If no valid tokens or refresh failed, perform full authorization flow ---
   const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline', // Request a refresh token
-    scope: SCOPES, // Corrected SCOEPS to SCOPES
+    access_type: 'offline',
+    scope: SCOPES,
+    prompt: 'consent', // ensures refresh_token is returned
   });
 
-  console.log('\n--- Authorization Required ---');
-  console.log('Visit this URL to authorize your application:');
-  console.log(authUrl);
-  console.log('------------------------------\n');
-
-  // Attempt to open URL using Electron if available
+  console.log(`\n🔗 Opening browser for authorization...`);
   try {
-    const { shell } = require('electron'); // Lazily require electron to avoid issues if not running in Electron
-    shell.openExternal(authUrl);
-  } catch (e) {
-    console.warn('Electron is not available to open the URL automatically. Please copy and paste the URL into your browser.');
+    require('electron').shell.openExternal(authUrl);
+  } catch {
+    require('open')(authUrl); // fallback for non-Electron CLI usage
   }
 
-  const code = await waitForCodeInput(); // This await is now inside an async function
-  const { tokens } = await oauth2Client.getToken(code); // Use oauth2Client
-  oauth2Client.setCredentials(tokens); // Corrected typo
+  const code = await listenForOAuthCode();
+  const { tokens } = await oauth2Client.getToken(code);
+
+  oauth2Client.setCredentials(tokens);
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
-  console.log('Authorization successful! Tokens saved to:', TOKEN_PATH);
-  
+
+  console.log('✅ Authorization successful. Tokens saved.');
   return oauth2Client;
 }
 
-/**
- * Prompts the user to enter the authorization code received from Google.
- * @returns {Promise<string>} A promise that resolves with the entered code.
- */
-function waitForCodeInput() {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({ // Using 'rl' for readline instance
-      input: process.stdin,
-      output: process.stdout,
+function listenForOAuthCode() {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      const url = new URL(req.url, 'http://localhost');
+      const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+
+      if (error) {
+        res.end('❌ Authorization failed. You may now close this window.');
+        server.close();
+        return reject(new Error(error));
+      }
+
+      if (code) {
+        res.end('✅ Authorization successful! You may now close this window.');
+        server.close();
+        return resolve(code);
+      }
+
+      res.end('No code received.');
     });
 
-    rl.question('Enter the authorization code you received from Google (from the browser URL after redirect): ', (code) => {
-      rl.close();
-      resolve(code.trim()); // Trim whitespace from the input
+    const PORT = Number(process.env.REDIRECT_PORT || 42813);
+
+    server.listen(PORT, () => {
+      console.log(`🌐 Listening for OAuth redirect on http://localhost:${PORT}`);
+    });
+
+    server.on('error', (err) => {
+      reject(new Error(`Server error: ${err.message}`));
     });
   });
 }
 
-/**
- * Returns the initialized and authorized OAuth2 client.
- * Throws an error if authorize() has not been called successfully.
- * @returns {google.auth.OAuth2} The OAuth2 client.
- */
 function getOAuthClient() {
-  if (!oauth2Client) {
-    throw new Error('OAuth client not initialized or authorized. Call authorize() first.');
-  }
+  if (!oauth2Client) throw new Error('OAuth client not initialized.');
   return oauth2Client;
 }
 
