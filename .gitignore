@@ -7,24 +7,36 @@ Thumbs.db
 
 # Build artifacts
 dist/
+build/
 *.log
 
 # Electron cache
 .cache/
 out/
+temp/
 
-# App tokens
+# Tokens and OAuth secrets
 tokens.json
 .env
 .env.local
-
-# Analysis logs
-logs/
-*.txt
-
-# Credentials
+.env.backup
 credentials.json
 
-# System/IDE config
+# Analysis and scan outputs
+logs/
+*.txt
+*.report
+
+# Platform-specific
+*.exe
+*.app
+*.asar
+
+# Misc build
+*.map
+
+# User config / Editor
 .vscode/
 .idea/
+*.iml
+*.swp
