@@ -31,13 +31,25 @@
     },
     "files": [
       "src/**/*",
-      "index.html",
-      "assets/**/*",
+      "src/steps/**/*",
       "src/filters/**/*",
-      "blacklist_*.json",
-      "config.json",
-      "!node_modules/*/{test,tests,example,examples}",
-      "!**/*.md"
+      "assets/**/*",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "src/filters/",
+        "to": "filters",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "tokens.json",
+        "to": "tokens.json"
+      },
+      {
+        "from": "config.json",
+        "to": "config.json"
+      }
     ],
     "win": {
       "target": "nsis",
