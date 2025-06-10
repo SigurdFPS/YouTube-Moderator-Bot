@@ -17,6 +17,8 @@ const {
 } = require('./liveChat');
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
+const ENV_PATH = path.join(__dirname, '.env');
+const TOKENS_PATH = path.join(__dirname, 'tokens.json');
 
 let mainWindow;
 let lastAnalyzed = {
@@ -43,6 +45,15 @@ function saveConfig(config) {
   }
 }
 
+function getStartupStepFile() {
+  const envExists = fs.existsSync(ENV_PATH);
+  const tokensExist = fs.existsSync(TOKENS_PATH);
+
+  if (!envExists) return 'step1.html';
+  if (!tokensExist) return 'step2.html';
+  return 'step3.html';
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -52,8 +63,9 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'src/index.html'));
-  setMainWindow(mainWindow); // Required for live chat logging
+  const startupFile = getStartupStepFile();
+  mainWindow.loadFile(path.join(__dirname, 'src/steps', startupFile));
+  setMainWindow(mainWindow);
 }
 
 app.whenReady().then(() => {
@@ -170,10 +182,20 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
       if (msg.isLikelySpam) {
         await deleteComments([msg.id]);
         writeLog(`🛑 Deleted: ${msg.text}`, 'live');
-        mainWindow.webContents.send('live-log', `🛑 Deleted: ${msg.text}`);
+        mainWindow.webContents.send('live-log', {
+          id: msg.id,
+          author: msg.author,
+          text: msg.text,
+          isLikelySpam: true,
+        });
       } else {
         writeLog(`⚠️ Suspect: ${msg.text}`, 'live');
-        mainWindow.webContents.send('live-log', `⚠️ Suspect: ${msg.text}`);
+        mainWindow.webContents.send('live-log', {
+          id: msg.id,
+          author: msg.author,
+          text: msg.text,
+          isLikelySpam: false,
+        });
       }
     }
   }, videoId);
