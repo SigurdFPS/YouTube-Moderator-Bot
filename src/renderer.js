@@ -1,34 +1,42 @@
-// Step elements
+// ===== DOM ELEMENTS =====
+
+// Step flow
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
 
-// Auth + tab UI
-const authBtn = document.getElementById('authBtn');
-const authStatus = document.getElementById('authStatus');
+// Auth flow
 const clientIdInput = document.getElementById('clientIdInput');
 const clientSecretInput = document.getElementById('clientSecretInput');
+const authBtn = document.getElementById('authBtn');
+const authStatus = document.getElementById('authStatus');
 
-// Analysis UI
+// Tabs
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabContents = document.querySelectorAll('.tab-content');
+
+// Video analysis UI
 const videoLinkInput = document.getElementById('videoLink');
 const logBox = document.getElementById('logBox');
 const highLikelyBox = document.getElementById('highLikely');
 const possibleLikelyBox = document.getElementById('possibleLikely');
 const safeCountLine = document.getElementById('safeCount');
 
-// Toast
-const toast = document.getElementById('toast');
-
 // Buttons
 const deleteHighBtn = document.getElementById('deleteHighBtn');
 const reviewPossibleBtn = document.getElementById('reviewPossibleBtn');
 const deleteReviewedBtn = document.getElementById('deleteReviewedBtn');
 
-// Tabs
-const tabButtons = document.querySelectorAll('.tab-button');
-const tabContents = document.querySelectorAll('.tab-content');
+// Toast
+const toast = document.getElementById('toast');
 
-// ===== Helpers =====
+// Live Mode UI
+const startBtn = document.getElementById('startLiveMonitor');
+const stopBtn = document.getElementById('stopLiveMonitor');
+const liveVideoIdInput = document.getElementById('liveVideoId');
+const liveLogBox = document.getElementById('liveLogBox');
+
+// ===== UTILS =====
 
 function showToast(message = '✔️ Task complete') {
   toast.textContent = message;
@@ -50,7 +58,8 @@ function switchTab(tabId) {
   });
 }
 
-// ===== Step 1: Save Client ID/Secret =====
+// ===== Step 1: Save OAuth Credentials =====
+
 window.loadCredentials = async () => {
   const clientId = clientIdInput.value.trim();
   const clientSecret = clientSecretInput.value.trim();
@@ -80,7 +89,8 @@ REDIRECT_PORT=42813`;
   }
 };
 
-// ===== Step 2: YouTube Auth =====
+// ===== Step 2: Authorize YouTube =====
+
 authBtn.addEventListener('click', async () => {
   appendLog('🔗 Authorizing with YouTube...');
   const result = await window.api.authorizeYouTube();
@@ -94,7 +104,8 @@ authBtn.addEventListener('click', async () => {
   }
 });
 
-// ===== Step 3: Video Analysis =====
+// ===== Step 3: Video Analysis Tab =====
+
 videoLinkInput.addEventListener('change', async () => {
   const link = videoLinkInput.value.trim();
   if (!link.includes('youtube.com') && !link.includes('youtu.be')) {
@@ -138,7 +149,48 @@ deleteReviewedBtn.addEventListener('click', async () => {
   showToast(msg);
 });
 
-// ===== On Load: Try auto-skip to Step 3 if token exists =====
+// ===== Live Mode Tab =====
+
+let activeMessageCache = new Set();
+
+function appendLiveLog(line) {
+  if (activeMessageCache.has(line)) return;
+  activeMessageCache.add(line);
+  liveLogBox.textContent += `\n${line}`;
+  liveLogBox.scrollTop = liveLogBox.scrollHeight;
+}
+
+startBtn.addEventListener('click', async () => {
+  const videoId = liveVideoIdInput.value.trim();
+  if (!videoId) {
+    showToast('❗ Enter a live video ID first');
+    return;
+  }
+
+  appendLiveLog(`🎬 Monitoring chat for video: ${videoId}`);
+  await window.api.startLiveMonitor(videoId);
+  startBtn.style.display = 'none';
+  stopBtn.style.display = 'inline-block';
+});
+
+stopBtn.addEventListener('click', async () => {
+  await window.api.stopLiveMonitor();
+  appendLiveLog(`🛑 Stopped monitoring`);
+  startBtn.style.display = 'inline-block';
+  stopBtn.style.display = 'none';
+});
+
+// ===== Tab Switching =====
+
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.tab;
+    switchTab(target);
+  });
+});
+
+// ===== On Load: Auto Step Skip if Authenticated =====
+
 window.addEventListener('DOMContentLoaded', () => {
   const fs = require('fs');
   const path = require('path');
@@ -151,4 +203,11 @@ window.addEventListener('DOMContentLoaded', () => {
     appendLog('✅ YouTube already authorized (tokens.json found)');
     showToast('Auto-authorized');
   }
+});
+
+// ===== IPC Live Log Sync from Main =====
+
+const { ipcRenderer } = require('electron');
+ipcRenderer.on('live-log', (_event, line) => {
+  appendLiveLog(line);
 });
