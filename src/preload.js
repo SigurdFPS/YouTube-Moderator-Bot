@@ -37,4 +37,8 @@ contextBridge.exposeInMainWorld('api', {
   // === Filter Management ===
   addFilterEntry: (mode, entry) => ipcRenderer.invoke('add-filter-entry', mode, entry),
   resetFilters: (mode) => ipcRenderer.invoke('reset-filters', mode),
+
+  // === Step Navigation ===
+  loadStep2: () => ipcRenderer.send('load-step-2'),
+  loadStep3: () => ipcRenderer.send('load-step-3'),
 });
