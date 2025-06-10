@@ -6,9 +6,10 @@ const youtube = google.youtube('v3');
 
 let polling = false;
 let interval = null;
+let nextPageToken = '';
 
 /**
- * Gets the liveChatId from the user's currently active live stream.
+ * Get the active liveChatId from the user's current livestream.
  */
 async function getLiveChatId() {
   const auth = getOAuthClient();
@@ -24,53 +25,72 @@ async function getLiveChatId() {
     throw new Error('No active live broadcasts found.');
   }
 
-  const liveChatId = broadcasts[0].snippet.liveChatId;
-  return liveChatId;
+  return broadcasts[0].snippet.liveChatId;
 }
 
 /**
- * Polls messages from the given liveChatId.
+ * Start polling the live chat and return detected messages.
+ * Each message is enhanced with isLikelySpam boolean.
  */
-async function pollLiveChat(liveChatId, onMessages) {
+async function startLiveChatListener(liveChatIdOverride) {
   const auth = getOAuthClient();
-  let nextPageToken = '';
-  polling = true;
+  const liveChatId = liveChatIdOverride || await getLiveChatId();
 
-  async function poll() {
-    if (!polling) return;
+  const res = await youtube.liveChatMessages.list({
+    auth,
+    liveChatId,
+    part: ['snippet', 'authorDetails'],
+    pageToken: nextPageToken,
+  });
 
-    try {
-      const res = await youtube.liveChatMessages.list({
-        auth,
-        liveChatId,
-        part: ['snippet', 'authorDetails'],
-        pageToken: nextPageToken,
-      });
+  nextPageToken = res.data.nextPageToken;
 
-      const messages = res.data.items.map((item) => ({
-        id: item.id,
-        text: item.snippet.displayMessage,
-        author: item.authorDetails.displayName,
-        publishedAt: item.snippet.publishedAt,
-      }));
+  const rawMessages = res.data.items.map(item => ({
+    id: item.id,
+    text: item.snippet.displayMessage,
+    author: item.authorDetails.displayName,
+    publishedAt: item.snippet.publishedAt,
+  }));
 
-      if (messages.length > 0 && typeof onMessages === 'function') {
-        onMessages(messages);
-      }
+  const analysis = analyzeComments(rawMessages);
 
-      nextPageToken = res.data.nextPageToken;
-    } catch (err) {
-      console.error('❌ Failed to fetch live chat messages:', err.message);
-      polling = false;
-    }
-  }
+  const highlyLikelyIds = new Set(analysis.highLikely.map(m => m.id));
 
-  interval = setInterval(poll, 5000); // every 5 seconds
-  poll(); // run immediately
+  const enrichedMessages = rawMessages.map(msg => ({
+    ...msg,
+    isLikelySpam: highlyLikelyIds.has(msg.id),
+  }));
+
+  return {
+    liveChatId,
+    messages: enrichedMessages,
+  };
 }
 
 /**
- * Stops the current polling session.
+ * Long-running monitor (not used in IPC, but available).
+ */
+async function startLiveChatMonitor(onSpamDetected = () => {}) {
+  try {
+    const liveChatId = await getLiveChatId();
+    console.log('🎥 Live chat found. Starting monitor...');
+
+    polling = true;
+    interval = setInterval(async () => {
+      const { messages } = await startLiveChatListener(liveChatId);
+
+      const flagged = messages.filter(m => m.isLikelySpam);
+      if (flagged.length > 0) {
+        onSpamDetected(flagged);
+      }
+    }, 5000);
+  } catch (err) {
+    console.error('❌ Live chat monitor error:', err.message);
+  }
+}
+
+/**
+ * Stop polling.
  */
 function stopPolling() {
   polling = false;
@@ -78,30 +98,9 @@ function stopPolling() {
   console.log('🛑 Live chat polling stopped.');
 }
 
-/**
- * Starts Live Chat Monitoring with spam detection callback.
- */
-async function startLiveChatMonitor(onSpamDetected = () => {}) {
-  try {
-    const liveChatId = await getLiveChatId();
-    console.log('🎥 Live chat found. Starting monitor...');
-
-    pollLiveChat(liveChatId, (messages) => {
-      const result = analyzeComments(messages);
-      if (result.highLikely.length || result.possibleLikely.length) {
-        onSpamDetected({
-          highLikely: result.highLikely,
-          possibleLikely: result.possibleLikely,
-          all: messages,
-        });
-      }
-    });
-  } catch (err) {
-    console.error('❌ Live chat monitor error:', err.message);
-  }
-}
-
 module.exports = {
+  getLiveChatId,
+  startLiveChatListener,
   startLiveChatMonitor,
   stopPolling,
 };
