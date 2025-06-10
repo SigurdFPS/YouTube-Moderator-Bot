@@ -1,5 +1,9 @@
-// ===== DOM ELEMENTS =====
+// ===== IMPORTS =====
+const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
+// ===== DOM ELEMENTS =====
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -32,8 +36,18 @@ const liveLogBox = document.getElementById('liveLogBox');
 const themeToggle = document.getElementById('themeToggle');
 const fontSelect = document.getElementById('fontSelect');
 
-// ===== UTILS =====
+// Filter management
+const videoFilterBox = document.getElementById('videoFilterBox');
+const liveFilterBox = document.getElementById('liveFilterBox');
+const saveVideoFilterBtn = document.getElementById('saveVideoFilter');
+const resetVideoFilterBtn = document.getElementById('resetVideoFilter');
+const saveLiveFilterBtn = document.getElementById('saveLiveFilter');
+const resetLiveFilterBtn = document.getElementById('resetLiveFilter');
 
+const videoFilterPath = path.join(__dirname, 'src/filters/blacklist_video.json');
+const liveFilterPath = path.join(__dirname, 'src/filters/blacklist_live.json');
+
+// ===== UTILS =====
 function showToast(message = '✔️ Task complete') {
   toast.textContent = message;
   toast.classList.add('show');
@@ -55,49 +69,39 @@ function switchTab(tabId) {
 }
 
 // ===== Step 1: Save OAuth Credentials =====
-
 window.loadCredentials = async () => {
   const clientId = clientIdInput.value.trim();
   const clientSecret = clientSecretInput.value.trim();
+  if (!clientId || !clientSecret) return showToast('❗ Enter both fields');
 
-  if (!clientId || !clientSecret) return showToast('❗ Please enter both Client ID and Secret');
-
-  const fs = require('fs');
-  const path = require('path');
-  const dotenvPath = path.join(__dirname, '.env');
-
-  const envContent = `YT_CLIENT_ID=${clientId}
-YT_CLIENT_SECRET=${clientSecret}
-GOOGLE_REDIRECT_URI=http://localhost:42813
-REDIRECT_PORT=42813`;
+  const envPath = path.join(__dirname, '.env');
+  const content = `YT_CLIENT_ID=${clientId}\nYT_CLIENT_SECRET=${clientSecret}\nGOOGLE_REDIRECT_URI=http://localhost:42813\nREDIRECT_PORT=42813`;
 
   try {
-    fs.writeFileSync(dotenvPath, envContent);
+    fs.writeFileSync(envPath, content);
     step1.classList.remove('active');
     step2.classList.add('active');
     console.log('.env saved.');
-  } catch (err) {
-    showToast('❌ Failed to save credentials');
+  } catch {
+    showToast('❌ Failed to save .env');
   }
 };
 
 // ===== Step 2: Authorize YouTube =====
-
 authBtn.addEventListener('click', async () => {
-  appendLog('🔗 Authorizing with YouTube...');
+  appendLog('🔗 Authorizing...');
   const result = await window.api.authorizeYouTube();
   appendLog(result);
   authStatus.textContent = result;
 
-  if (result.includes('successfully')) {
+  if (result.includes('success')) {
     step2.classList.remove('active');
     step3.classList.add('active');
-    showToast('✅ YouTube Authorized');
+    showToast('✅ Authorized');
   }
 });
 
 // ===== Step 3: Video Analysis =====
-
 videoLinkInput.addEventListener('change', async () => {
   const link = videoLinkInput.value.trim();
   if (!link.includes('youtube.com') && !link.includes('youtu.be')) {
@@ -105,7 +109,7 @@ videoLinkInput.addEventListener('change', async () => {
     return;
   }
 
-  appendLog('📥 Analyzing video comments...');
+  appendLog('📥 Analyzing comments...');
   const result = await window.api.analyzeComments(link);
 
   highLikelyBox.textContent = result.highLikely.join('\n') || 'None';
@@ -142,7 +146,6 @@ deleteReviewedBtn.addEventListener('click', async () => {
 });
 
 // ===== Live Mode =====
-
 let activeMessageCache = new Set();
 
 function appendLiveLog(line) {
@@ -154,7 +157,7 @@ function appendLiveLog(line) {
 
 startBtn.addEventListener('click', async () => {
   const videoId = liveVideoIdInput.value.trim();
-  appendLiveLog(`🎬 Starting live chat monitoring${videoId ? ` for ${videoId}` : ''}...`);
+  appendLiveLog(`🎬 Starting monitor${videoId ? ` for ${videoId}` : ''}...`);
   await window.api.startLiveMonitor(videoId);
   startBtn.style.display = 'none';
   stopBtn.style.display = 'inline-block';
@@ -162,22 +165,12 @@ startBtn.addEventListener('click', async () => {
 
 stopBtn.addEventListener('click', async () => {
   await window.api.stopLiveMonitor();
-  appendLiveLog(`🛑 Stopped live chat monitoring`);
+  appendLiveLog(`🛑 Monitoring stopped`);
   startBtn.style.display = 'inline-block';
   stopBtn.style.display = 'none';
 });
 
-// ===== Tab Switching =====
-
-tabButtons.forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-// ===== IPC Live Sync =====
-
-const { ipcRenderer } = require('electron');
-
-ipcRenderer.on('live-log', (_event, payload) => {
+ipcRenderer.on('live-log', (_e, payload) => {
   if (typeof payload === 'string') return appendLiveLog(payload);
 
   payload.forEach(msg => {
@@ -185,14 +178,18 @@ ipcRenderer.on('live-log', (_event, payload) => {
     appendLiveLog(`${tag} [${msg.author}]: ${msg.text}`);
     if (msg.isLikelySpam) {
       window.api.deleteLiveComment(msg.id).then(() => {
-        appendLiveLog(`🗑️ Deleted live spam from ${msg.author}`);
+        appendLiveLog(`🗑️ Deleted from ${msg.author}`);
       });
     }
   });
 });
 
-// ===== Theme and Font Config =====
+// ===== Tab Switching =====
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
 
+// ===== Theme/Font Config =====
 function applyTheme(theme) {
   document.body.classList.remove('light', 'dark');
   document.body.classList.add(theme);
@@ -214,8 +211,6 @@ async function loadAndApplyConfig() {
   if (fontSelect) fontSelect.value = fontTheme;
 }
 
-// ===== Theme/Font Toggles =====
-
 themeToggle?.addEventListener('click', () => {
   const current = document.body.classList.contains('dark') ? 'dark' : 'light';
   applyTheme(current === 'dark' ? 'light' : 'dark');
@@ -225,15 +220,36 @@ fontSelect?.addEventListener('change', (e) => {
   applyFontTheme(e.target.value);
 });
 
-// ===== Auto Auth + Theme on Load =====
+// ===== Filter Load/Save =====
+function loadFilter(path, targetBox) {
+  if (fs.existsSync(path)) {
+    const content = fs.readFileSync(path, 'utf-8');
+    try {
+      const list = JSON.parse(content);
+      targetBox.value = Array.isArray(list) ? list.join('\n') : '';
+    } catch {
+      targetBox.value = '';
+    }
+  }
+}
 
+function saveFilter(path, sourceBox) {
+  const lines = sourceBox.value.split('\n').map(line => line.trim()).filter(Boolean);
+  fs.writeFileSync(path, JSON.stringify(lines, null, 2));
+  showToast('✅ Filter saved');
+}
+
+function resetFilter(path, sourceBox, defaults) {
+  fs.writeFileSync(path, JSON.stringify(defaults, null, 2));
+  loadFilter(path, sourceBox);
+  showToast('🔁 Filter reset');
+}
+
+// ===== Load on Init =====
 window.addEventListener('DOMContentLoaded', async () => {
   await loadAndApplyConfig();
 
-  const fs = require('fs');
-  const path = require('path');
   const tokenPath = path.join(__dirname, 'tokens.json');
-
   if (fs.existsSync(tokenPath)) {
     step1.classList.remove('active');
     step2.classList.remove('active');
@@ -241,4 +257,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     appendLog('✅ YouTube already authorized');
     showToast('Auto-authorized');
   }
+
+  loadFilter(videoFilterPath, videoFilterBox);
+  loadFilter(liveFilterPath, liveFilterBox);
 });
+
+// ===== Filter Event Listeners =====
+saveVideoFilterBtn?.addEventListener('click', () => saveFilter(videoFilterPath, videoFilterBox));
+resetVideoFilterBtn?.addEventListener('click', () =>
+  resetFilter(videoFilterPath, videoFilterBox, [
+    'been watching',
+    'source of inspiration',
+    'thanks for your content',
+    'inspiring me daily',
+    'positive vibes only',
+  ])
+);
+
+saveLiveFilterBtn?.addEventListener('click', () => saveFilter(liveFilterPath, liveFilterBox));
+resetLiveFilterBtn?.addEventListener('click', () =>
+  resetFilter(liveFilterPath, liveFilterBox, ['buy', 'sub4sub', 'check out my channel'])
+);
