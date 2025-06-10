@@ -70,10 +70,10 @@ app.on('window-all-closed', () => {
 ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
-    writeLog('✅ YouTube account successfully authenticated');
+    writeLog('✅ YouTube account successfully authenticated', 'video');
     return '✅ YouTube account successfully authenticated';
   } catch (err) {
-    writeLog(`❌ Authorization failed: ${err.message}`);
+    writeLog(`❌ Authorization failed: ${err.message}`, 'video');
     return `❌ Authorization failed: ${err.message}`;
   }
 });
@@ -86,24 +86,24 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     const videoId = extractVideoId(videoLink);
     if (!videoId) throw new Error('Invalid YouTube link');
 
-    writeLog(`🎯 Video: ${videoLink}`);
+    writeLog(`🎯 Video: ${videoLink}`, 'video');
     logSteps.push(`🎯 Video: ${videoLink}`);
 
     const comments = await fetchComments(videoId);
     logSteps.push(`📥 ${comments.length} comments fetched`);
-    writeLog(`📥 ${comments.length} comments fetched`);
+    writeLog(`📥 ${comments.length} comments fetched`, 'video');
 
     const analysis = analyzeComments(comments);
     lastAnalyzed.highlyLikely = analysis.highLikely;
     lastAnalyzed.possibleLikely = analysis.possibleLikely;
 
     const summary = [
-      `🚩 Highly likely: ${analysis.highLikely.length}`,
+      `🚩 Highly likely: ${analysis.highlyLikely.length}`,
       `⚠️ Possible: ${analysis.possibleLikely.length}`,
       `✅ Safe: ${analysis.safeCount}`,
     ];
 
-    writeGroup(summary);
+    writeGroup(summary, 'video');
     logSteps.push(...summary);
     logSteps.push('🧠 Report being generated...');
 
@@ -115,16 +115,16 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     });
 
     logSteps.push(`📄 Saved: ${reportFile}`);
-    writeLog(`📄 Report saved: ${reportFile}`);
+    writeLog(`📄 Report saved: ${reportFile}`, 'video');
 
     return {
-      highLikely: analysis.highLikely.map(c => c.text),
+      highLikely: analysis.highlyLikely.map(c => c.text),
       possibleLikely: analysis.possibleLikely.map(c => c.text),
       safeCount: analysis.safeCount,
       logSteps,
     };
   } catch (err) {
-    writeLog(`❌ Error: ${err.message}`);
+    writeLog(`❌ Error: ${err.message}`, 'video');
     logSteps.push(`❌ Error: ${err.message}`);
     return {
       highLikely: [],
@@ -142,7 +142,7 @@ ipcMain.handle('delete-highly-likely', async () => {
   }
 
   const deleted = await deleteComments(lastAnalyzed.highlyLikely.map(c => c.id));
-  writeLog(`🧹 Deleted ${deleted.length}`);
+  writeLog(`🧹 Deleted ${deleted.length}`, 'video');
   return `🧹 Deleted ${deleted.length}`;
 });
 
@@ -152,7 +152,7 @@ ipcMain.handle('get-review-comments', () => {
 
 ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   const deleted = await deleteComments(idsToDelete);
-  writeLog(`🗑️ Manually deleted ${deleted.length}`);
+  writeLog(`🗑️ Manually deleted ${deleted.length}`, 'video');
 });
 
 ipcMain.handle('delete-reviewed-comments', async () => {
@@ -173,19 +173,22 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
   await startLiveChatMonitor(async ({ highLikely, possibleLikely, all }) => {
     for (const msg of highLikely) {
       await deleteComments([msg.id]);
+      writeLog(`🛑 Deleted: ${msg.text}`, 'live');
       mainWindow.webContents.send('live-log', `🛑 Deleted: ${msg.text}`);
     }
 
     for (const msg of possibleLikely) {
+      writeLog(`⚠️ Suspect: ${msg.text}`, 'live');
       mainWindow.webContents.send('live-log', `⚠️ Suspect: ${msg.text}`);
     }
 
     for (const msg of all) {
+      writeLog(`💬 ${msg.author}: ${msg.text}`, 'live');
       mainWindow.webContents.send('live-log', `💬 ${msg.author}: ${msg.text}`);
     }
   });
 
-  writeLog('🟢 Live monitor started');
+  writeLog('🟢 Live monitor started', 'live');
 });
 
 ipcMain.on('stop-live-monitor', () => {
@@ -193,7 +196,7 @@ ipcMain.on('stop-live-monitor', () => {
   liveMonitorActive = false;
   mainWindow.webContents.send('live-log', '🔴 Stopped');
   mainWindow.webContents.send('live-monitor-stopped');
-  writeLog('🔴 Monitor stopped');
+  writeLog('🔴 Monitor stopped', 'live');
 });
 
 // === IPC: Config ===
