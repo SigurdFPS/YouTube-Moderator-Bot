@@ -29,15 +29,19 @@
   <div id="authStatus"></div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-
     document.getElementById('authBtn').addEventListener('click', async () => {
-      document.getElementById('authStatus').innerText = '🔄 Authorizing...';
-      const result = await window.api.authorizeYouTube();
+      const statusDiv = document.getElementById('authStatus');
+      statusDiv.innerText = '🔄 Authorizing...';
 
-      document.getElementById('authStatus').innerText = result;
-      if (result.includes('success')) {
-        ipcRenderer.send('load-step-3');
+      try {
+        const result = await window.api.authorizeYouTube();
+        statusDiv.innerText = result;
+
+        if (result.toLowerCase().includes('success')) {
+          window.api.loadStep3(); // Properly exposed from preload.js
+        }
+      } catch (err) {
+        statusDiv.innerText = '❌ Authorization failed: ' + err.message;
       }
     });
   </script>
