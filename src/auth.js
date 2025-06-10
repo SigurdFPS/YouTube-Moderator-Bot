@@ -1,12 +1,16 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const { google } = require('googleapis');
 const http = require('http');
 const { URL } = require('url');
+const { google } = require('googleapis');
+const electron = require('electron');
 
 const SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl'];
-const TOKEN_PATH = path.join(__dirname, 'tokens.json');
+
+// Get persistent app storage path for Electron
+const userDataPath = (electron.app || electron.remote.app).getPath('userData');
+const TOKEN_PATH = path.join(userDataPath, 'tokens.json');
 
 let oauth2Client = null;
 
@@ -26,12 +30,12 @@ function createOAuthClient() {
 async function authorize() {
   if (!oauth2Client) createOAuthClient();
 
-  // Try to load existing tokens
+  // Load existing tokens if available
   if (fs.existsSync(TOKEN_PATH)) {
     try {
-      const token = JSON.parse(fs.readFileSync(TOKEN_PATH));
+      const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'));
       oauth2Client.setCredentials(token);
-      await oauth2Client.getAccessToken(); // triggers refresh if needed
+      await oauth2Client.getAccessToken(); // Will refresh token if expired
       return oauth2Client;
     } catch (err) {
       console.warn('⚠️ Failed to refresh token:', err.message);
@@ -42,23 +46,23 @@ async function authorize() {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent', // ensures refresh_token is returned
+    prompt: 'consent',
   });
 
   console.log(`\n🔗 Opening browser for authorization...`);
   try {
-    require('electron').shell.openExternal(authUrl);
+    electron.shell.openExternal(authUrl);
   } catch {
-    require('open')(authUrl); // fallback for non-Electron CLI usage
+    require('open')(authUrl); // fallback for CLI environments
   }
 
   const code = await listenForOAuthCode();
   const { tokens } = await oauth2Client.getToken(code);
-
   oauth2Client.setCredentials(tokens);
-  fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
 
+  fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
   console.log('✅ Authorization successful. Tokens saved.');
+
   return oauth2Client;
 }
 
@@ -85,7 +89,6 @@ function listenForOAuthCode() {
     });
 
     const PORT = Number(process.env.REDIRECT_PORT || 42813);
-
     server.listen(PORT, () => {
       console.log(`🌐 Listening for OAuth redirect on http://localhost:${PORT}`);
     });
