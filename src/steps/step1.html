@@ -28,6 +28,10 @@
       border: none;
       cursor: pointer;
     }
+    #status {
+      margin-top: 20px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -40,26 +44,34 @@
   <input id="clientSecretInput" type="text" placeholder="YT_CLIENT_SECRET" />
 
   <button id="saveButton">Save and Continue</button>
+  <div id="status"></div>
 
   <script>
+    const status = document.getElementById('status');
+
     document.getElementById('saveButton').addEventListener('click', async () => {
       const clientId = document.getElementById('clientIdInput').value.trim();
       const clientSecret = document.getElementById('clientSecretInput').value.trim();
 
       if (!clientId || !clientSecret) {
-        alert('Both fields are required.');
+        status.textContent = '⚠️ Both fields are required.';
         return;
       }
+
+      status.textContent = '💾 Saving credentials...';
 
       try {
         const result = await window.api.saveEnvFile(clientId, clientSecret);
         if (result.success) {
-          window.location.href = 'step2.html';
+          status.textContent = '✅ Saved! Redirecting...';
+          setTimeout(() => {
+            window.location.href = 'step2.html';
+          }, 1000);
         } else {
-          alert('❌ Failed to save: ' + result.message);
+          status.textContent = '❌ Failed to save: ' + result.message;
         }
       } catch (err) {
-        alert('❌ Error saving credentials: ' + err.message);
+        status.textContent = '❌ Error saving credentials: ' + err.message;
       }
     });
   </script>
