@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Step 1 – YouTube Comment Cleaner</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #fff;
+      color: #000;
+      margin: 0;
+      padding: 40px;
+    }
+    input {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: 1px solid #aaa;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #1d72f3;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Step 1: Enter YouTube OAuth Credentials</h2>
+  <label for="clientIdInput">Client ID:</label>
+  <input id="clientIdInput" type="text" placeholder="YT_CLIENT_ID" />
+
+  <label for="clientSecretInput">Client Secret:</label>
+  <input id="clientSecretInput" type="text" placeholder="YT_CLIENT_SECRET" />
+
+  <button onclick="loadCredentials()">Save and Continue</button>
+
+  <script>
+    const fs = require('fs');
+    const path = require('path');
+    const { ipcRenderer } = require('electron');
+
+    function loadCredentials() {
+      const id = document.getElementById('clientIdInput').value.trim();
+      const secret = document.getElementById('clientSecretInput').value.trim();
+
+      if (!id || !secret) {
+        alert('Both fields are required.');
+        return;
+      }
+
+      const content = `YT_CLIENT_ID=${id}\nYT_CLIENT_SECRET=${secret}\nGOOGLE_REDIRECT_URI=http://localhost:42813\nREDIRECT_PORT=42813`;
+
+      const appDataPath = process.env.APPDATA || (process.platform === 'darwin' 
+        ? path.join(process.env.HOME, 'Library/Preferences') 
+        : path.join(process.env.HOME, '.config'));
+
+      const saveDir = path.join(appDataPath, 'YouTubeCommentCleaner');
+      const envPath = path.join(saveDir, '.env');
+
+      try {
+        if (!fs.existsSync(saveDir)) fs.mkdirSync(saveDir, { recursive: true });
+        fs.writeFileSync(envPath, content);
+        ipcRenderer.send('load-step-2');
+      } catch (err) {
+        alert('Failed to save credentials: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
