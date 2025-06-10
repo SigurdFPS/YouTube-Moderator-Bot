@@ -2,71 +2,93 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube Comment Moderation Bot</title>
+  <title>YouTube Comment Cleaner</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: #f0f0f0;
       margin: 0;
-      padding: 20px;
-      display: flex;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
     }
 
-    .left-panel {
-      width: 60%;
-      padding-right: 20px;
+    .container {
+      padding: 30px;
     }
 
-    .right-panel {
-      width: 40%;
-      border-left: 1px solid #444;
-      padding-left: 20px;
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    input, textarea {
+      background: #1e1e1e;
+      color: #fff;
+      padding: 10px;
+      border: 1px solid #333;
+      width: 100%;
+      margin-top: 10px;
     }
 
     button {
+      margin-top: 20px;
       padding: 10px 20px;
-      background-color: #2196f3;
+      background: #1d72f3;
+      border: none;
       color: white;
+      cursor: pointer;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      background: #222;
       border: none;
       cursor: pointer;
-      margin-top: 10px;
+      color: #ccc;
     }
 
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      color: #fff;
+    .tab-button.active {
+      background: #1d72f3;
+      color: white;
     }
 
-    #logBox, #reportBox {
-      background-color: #1e1e1e;
-      border: 1px solid #333;
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    #logBox, #highLikely, #possibleLikely, #safeCount {
+      background: #1a1a1a;
       padding: 10px;
-      margin-top: 10px;
-      height: 200px;
-      overflow-y: auto;
+      border: 1px solid #333;
       white-space: pre-wrap;
-    }
-
-    .section-label {
-      font-weight: bold;
-      margin-top: 10px;
     }
 
     .toast {
       position: fixed;
-      bottom: 10px;
-      left: 10px;
-      background: #323232;
+      bottom: 15px;
+      left: 15px;
+      background: #2a2a2a;
       color: #fff;
       padding: 10px 15px;
-      border-radius: 4px;
+      border-radius: 5px;
       opacity: 0;
-      transition: opacity 0.5s ease;
+      transition: opacity 0.4s ease;
     }
 
     .toast.show {
@@ -75,29 +97,57 @@
   </style>
 </head>
 <body>
-  <div class="left-panel">
-    <button id="authBtn">🔗 Authorize YouTube</button>
-    <input type="text" id="videoLink" placeholder="Paste YouTube Video Link Here" />
+  <div class="container">
 
-    <div id="logBox">🔌 Bot awaiting command...</div>
-  </div>
-
-  <div class="right-panel">
-    <div id="reportBox">
-      <div class="section-label">Highly Likely Comments</div>
-      <div id="highLikely"></div>
-      <div class="section-label">Possible Comments</div>
-      <div id="possibleLikely"></div>
-      <div class="section-label">Safe Comments</div>
-      <div id="safeCount">0 comments marked safe.</div>
+    <!-- Step 1: Enter Client Credentials -->
+    <div id="step1" class="step active">
+      <h2>Step 1: Enter YouTube OAuth Credentials</h2>
+      <input id="clientIdInput" type="text" placeholder="YT_CLIENT_ID" />
+      <input id="clientSecretInput" type="text" placeholder="YT_CLIENT_SECRET" />
+      <button onclick="loadCredentials()">Save and Continue</button>
     </div>
 
-    <button id="deleteHighBtn">🧹 Delete Highly Likely</button>
-    <button id="reviewPossibleBtn">🔍 Review Possible</button>
-    <button id="deleteReviewedBtn">🗑️ Delete Reviewed Comments</button>
-  </div>
+    <!-- Step 2: Authorize YouTube -->
+    <div id="step2" class="step">
+      <h2>Step 2: Authorize YouTube Access</h2>
+      <button id="authBtn">🔗 Authorize YouTube</button>
+      <div id="authStatus"></div>
+    </div>
 
-  <div class="toast" id="toast">✔️ Report saved</div>
+    <!-- Step 3: Main Interface -->
+    <div id="step3" class="step">
+      <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('video')">🎬 Video Analysis</button>
+        <button class="tab-button" onclick="switchTab('live')">🔴 Live Mode</button>
+      </div>
+
+      <div id="video" class="tab-content active">
+        <input type="text" id="videoLink" placeholder="Paste YouTube Video Link Here" />
+        <div id="logBox">🔌 Bot ready.</div>
+        <div class="section">
+          <h4>Highly Likely Comments</h4>
+          <div id="highLikely"></div>
+        </div>
+        <div class="section">
+          <h4>Possible Comments</h4>
+          <div id="possibleLikely"></div>
+        </div>
+        <div class="section">
+          <h4>Safe Comments</h4>
+          <div id="safeCount">0 comments marked safe.</div>
+        </div>
+        <button id="deleteHighBtn">🧹 Delete Highly Likely</button>
+        <button id="reviewPossibleBtn">🔍 Review Possible</button>
+        <button id="deleteReviewedBtn">🗑️ Delete Reviewed Comments</button>
+      </div>
+
+      <div id="live" class="tab-content">
+        <p>🔧 Live chat moderation coming soon.</p>
+      </div>
+    </div>
+
+    <div class="toast" id="toast">✔️ Task Complete</div>
+  </div>
 
   <script src="renderer.js"></script>
 </body>
