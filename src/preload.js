@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   startLiveMonitor: (videoId) => ipcRenderer.send('start-live-monitor', videoId),
   stopLiveMonitor: () => ipcRenderer.send('stop-live-monitor'),
 
+  deleteLiveComment: (commentId) => ipcRenderer.invoke('delete-live-comment', commentId),
+
   onLiveChatMessage: (callback) => {
     ipcRenderer.removeAllListeners('live-chat-message');
     ipcRenderer.on('live-chat-message', (_, msg) => callback(msg));
@@ -29,9 +31,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
 
-  deleteLiveComment: (commentId) => ipcRenderer.invoke('delete-live-comment', commentId),
-
-  // === Config Persistence ===
+  // === Config Persistence (Theme, Font, Tokens, etc) ===
   loadConfig: () => ipcRenderer.invoke('load-config'),
   saveConfig: (config) => ipcRenderer.send('save-config', config),
 });
