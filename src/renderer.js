@@ -1,9 +1,9 @@
-// ===== IMPORTS =====
+// == Existing Imports ==
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-// ===== DOM ELEMENTS =====
+// == DOM Element Selections ==
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -36,39 +36,49 @@ const liveLogBox = document.getElementById('liveLogBox');
 const themeToggle = document.getElementById('themeToggle');
 const fontSelect = document.getElementById('fontSelect');
 
-// Filter management
+// == Filter Controls ==
 const videoFilterBox = document.getElementById('videoFilterBox');
 const liveFilterBox = document.getElementById('liveFilterBox');
 const saveVideoFilterBtn = document.getElementById('saveVideoFilter');
 const resetVideoFilterBtn = document.getElementById('resetVideoFilter');
 const saveLiveFilterBtn = document.getElementById('saveLiveFilter');
 const resetLiveFilterBtn = document.getElementById('resetLiveFilter');
+const addVideoFilterBtn = document.getElementById('addVideoFilterBtn');
+const addLiveFilterBtn = document.getElementById('addLiveFilterBtn');
+const newVideoFilterInput = document.getElementById('newVideoFilterInput');
+const newLiveFilterInput = document.getElementById('newLiveFilterInput');
 
+// == Paths ==
 const videoFilterPath = path.join(__dirname, 'src/filters/blacklist_video.json');
 const liveFilterPath = path.join(__dirname, 'src/filters/blacklist_live.json');
 
-// ===== UTILS =====
+// == Toast Utility ==
 function showToast(message = '✔️ Task complete') {
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+// == Log Utilities ==
 function appendLog(line) {
   logBox.textContent += `\n${line}`;
   logBox.scrollTop = logBox.scrollHeight;
 }
 
-function switchTab(tabId) {
-  tabButtons.forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabId);
-  });
-  tabContents.forEach(content => {
-    content.classList.toggle('active', content.id === tabId);
-  });
+function appendLiveLog(line) {
+  if (activeMessageCache.has(line)) return;
+  activeMessageCache.add(line);
+  liveLogBox.textContent += `\n${line}`;
+  liveLogBox.scrollTop = liveLogBox.scrollHeight;
 }
 
-// ===== Step 1: Save OAuth Credentials =====
+// == Tab Logic ==
+function switchTab(tabId) {
+  tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
+  tabContents.forEach(content => content.classList.toggle('active', content.id === tabId));
+}
+
+// == Step 1: Save Client ID/Secret ==
 window.loadCredentials = async () => {
   const clientId = clientIdInput.value.trim();
   const clientSecret = clientSecretInput.value.trim();
@@ -87,7 +97,7 @@ window.loadCredentials = async () => {
   }
 };
 
-// ===== Step 2: Authorize YouTube =====
+// == Step 2: OAuth ==
 authBtn.addEventListener('click', async () => {
   appendLog('🔗 Authorizing...');
   const result = await window.api.authorizeYouTube();
@@ -101,7 +111,7 @@ authBtn.addEventListener('click', async () => {
   }
 });
 
-// ===== Step 3: Video Analysis =====
+// == Video Analysis Logic ==
 videoLinkInput.addEventListener('change', async () => {
   const link = videoLinkInput.value.trim();
   if (!link.includes('youtube.com') && !link.includes('youtu.be')) {
@@ -132,11 +142,7 @@ reviewPossibleBtn.addEventListener('click', () => {
   const left = window.screenX + (window.outerWidth - width) / 2;
   const top = window.screenY + (window.outerHeight - height) / 2;
 
-  window.open(
-    'reviewModal.html',
-    'Review Comments',
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes`
-  );
+  window.open('reviewModal.html', 'Review Comments', `width=${width},height=${height},left=${left},top=${top}`);
 });
 
 deleteReviewedBtn.addEventListener('click', async () => {
@@ -145,15 +151,8 @@ deleteReviewedBtn.addEventListener('click', async () => {
   showToast(msg);
 });
 
-// ===== Live Mode =====
+// == Live Chat ==
 let activeMessageCache = new Set();
-
-function appendLiveLog(line) {
-  if (activeMessageCache.has(line)) return;
-  activeMessageCache.add(line);
-  liveLogBox.textContent += `\n${line}`;
-  liveLogBox.scrollTop = liveLogBox.scrollHeight;
-}
 
 startBtn.addEventListener('click', async () => {
   const videoId = liveVideoIdInput.value.trim();
@@ -184,12 +183,7 @@ ipcRenderer.on('live-log', (_e, payload) => {
   });
 });
 
-// ===== Tab Switching =====
-tabButtons.forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-// ===== Theme/Font Config =====
+// == Theme & Font ==
 function applyTheme(theme) {
   document.body.classList.remove('light', 'dark');
   document.body.classList.add(theme);
@@ -220,7 +214,7 @@ fontSelect?.addEventListener('change', (e) => {
   applyFontTheme(e.target.value);
 });
 
-// ===== Filter Load/Save =====
+// == Load & Save Filter Files ==
 function loadFilter(path, targetBox) {
   if (fs.existsSync(path)) {
     const content = fs.readFileSync(path, 'utf-8');
@@ -245,7 +239,26 @@ function resetFilter(path, sourceBox, defaults) {
   showToast('🔁 Filter reset');
 }
 
-// ===== Load on Init =====
+// == Add Filter Entries ==
+addVideoFilterBtn?.addEventListener('click', async () => {
+  const entry = newVideoFilterInput.value.trim();
+  if (!entry) return showToast('❗ Empty entry');
+  await window.api.addFilterEntry('video', entry);
+  loadFilter(videoFilterPath, videoFilterBox);
+  newVideoFilterInput.value = '';
+  showToast('➕ Added to Video filter');
+});
+
+addLiveFilterBtn?.addEventListener('click', async () => {
+  const entry = newLiveFilterInput.value.trim();
+  if (!entry) return showToast('❗ Empty entry');
+  await window.api.addFilterEntry('live', entry);
+  loadFilter(liveFilterPath, liveFilterBox);
+  newLiveFilterInput.value = '';
+  showToast('➕ Added to Live filter');
+});
+
+// == Init Load ==
 window.addEventListener('DOMContentLoaded', async () => {
   await loadAndApplyConfig();
 
@@ -262,7 +275,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   loadFilter(liveFilterPath, liveFilterBox);
 });
 
-// ===== Filter Event Listeners =====
+// == Save / Reset Buttons ==
 saveVideoFilterBtn?.addEventListener('click', () => saveFilter(videoFilterPath, videoFilterBox));
 resetVideoFilterBtn?.addEventListener('click', () =>
   resetFilter(videoFilterPath, videoFilterBox, [
@@ -270,11 +283,15 @@ resetVideoFilterBtn?.addEventListener('click', () =>
     'source of inspiration',
     'thanks for your content',
     'inspiring me daily',
-    'positive vibes only',
+    'positive vibes only'
   ])
 );
 
 saveLiveFilterBtn?.addEventListener('click', () => saveFilter(liveFilterPath, liveFilterBox));
 resetLiveFilterBtn?.addEventListener('click', () =>
-  resetFilter(liveFilterPath, liveFilterBox, ['buy', 'sub4sub', 'check out my channel'])
+  resetFilter(liveFilterPath, liveFilterBox, [
+    'buy',
+    'check out my channel',
+    'sub4sub'
+  ])
 );
