@@ -6,11 +6,63 @@
   <meta name="description" content="YouTube Comment Cleaner – Analyze and moderate spam comments and live chat in real time." />
   <title>YouTube Comment Cleaner</title>
   <style>
+    body.light {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    body.light input,
+    body.light textarea,
+    body.light #logBox,
+    body.light #highLikely,
+    body.light #possibleLikely,
+    body.light #safeCount,
+    body.light #liveLogBox {
+      background: #f0f0f0;
+      color: #000;
+      border: 1px solid #aaa;
+    }
+
+    body.light .tab-button {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    body.light .tab-button.active {
+      background: #1d72f3;
+      color: white;
+    }
+
+    body.dark {
+      background: #0f0f0f;
+      color: #f0f0f0;
+    }
+
+    body.dark input,
+    body.dark textarea,
+    body.dark #logBox,
+    body.dark #highLikely,
+    body.dark #possibleLikely,
+    body.dark #safeCount,
+    body.dark #liveLogBox {
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #333;
+    }
+
+    body.dark .tab-button {
+      background: #222;
+      color: #ccc;
+    }
+
+    body.dark .tab-button.active {
+      background: #1d72f3;
+      color: white;
+    }
+
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0f0f0f;
-      color: #f0f0f0;
     }
 
     .container {
@@ -26,8 +78,6 @@
     }
 
     input, textarea {
-      background: #1e1e1e;
-      color: #fff;
       padding: 10px;
       border: 1px solid #333;
       width: 100%;
@@ -51,15 +101,8 @@
 
     .tab-button {
       padding: 10px 20px;
-      background: #222;
       border: none;
       cursor: pointer;
-      color: #ccc;
-    }
-
-    .tab-button.active {
-      background: #1d72f3;
-      color: white;
     }
 
     .tab-content {
@@ -76,9 +119,7 @@
 
     #logBox, #highLikely, #possibleLikely, #safeCount,
     #liveLogBox {
-      background: #1a1a1a;
       padding: 10px;
-      border: 1px solid #333;
       white-space: pre-wrap;
       height: 150px;
       overflow-y: auto;
@@ -110,9 +151,22 @@
       background: #c62828;
       display: none;
     }
+
+    #themeToggle {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 6px 12px;
+      background: #555;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
+  <button id="themeToggle">🌞 Light Mode</button>
+
   <div class="container">
 
     <!-- Step 1: Enter Client Credentials -->
