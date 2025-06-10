@@ -29,6 +29,8 @@
 
     .container {
       padding: 30px;
+      max-width: 900px;
+      margin: 0 auto;
     }
 
     .step {
@@ -93,8 +95,7 @@
       margin-bottom: 20px;
     }
 
-    #logBox, #highLikely, #possibleLikely, #safeCount,
-    #liveLogBox {
+    #logBox, #highLikely, #possibleLikely, #safeCount, #liveLogBox {
       padding: 10px;
       white-space: pre-wrap;
       height: 150px;
@@ -131,23 +132,16 @@
       display: none;
     }
 
-    #themeToggle,
     #fontStyleSelect {
       position: absolute;
       top: 15px;
+      right: 15px;
       padding: 6px 12px;
       background: #555;
       color: white;
       border: none;
       cursor: pointer;
-    }
-
-    #themeToggle {
-      right: 15px;
-    }
-
-    #fontStyleSelect {
-      right: 140px;
+      display: none;
     }
 
     .filter-controls {
@@ -168,7 +162,6 @@
   </style>
 </head>
 <body>
-  <button id="themeToggle">🌞 Light Mode</button>
   <select id="fontStyleSelect" title="Select Theme">
     <option value="default">Default</option>
     <option value="default-dark">Default - Dark</option>
@@ -199,6 +192,10 @@
 
     <!-- Step 3: Main Interface -->
     <div id="step3" class="step">
+      <script>
+        document.getElementById("fontStyleSelect").style.display = "block";
+      </script>
+
       <div class="tabs">
         <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
         <button class="tab-button" data-tab="live">🔴 Live Mode</button>
