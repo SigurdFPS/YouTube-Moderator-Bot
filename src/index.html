@@ -48,8 +48,13 @@
       color: var(--input-text);
     }
 
+    textarea {
+      resize: vertical;
+      font-family: monospace;
+    }
+
     button {
-      margin-top: 20px;
+      margin-top: 10px;
       padding: 10px 20px;
       background: var(--button-bg);
       border: none;
@@ -144,6 +149,22 @@
     #fontStyleSelect {
       right: 140px;
     }
+
+    .filter-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-controls input {
+      flex-grow: 1;
+      min-width: 200px;
+    }
+
+    h4 {
+      margin-bottom: 6px;
+    }
   </style>
 </head>
 <body>
@@ -207,6 +228,18 @@
         <button id="deleteHighBtn">🧹 Delete Highly Likely</button>
         <button id="reviewPossibleBtn">🔍 Review Possible</button>
         <button id="deleteReviewedBtn">🗑️ Delete Reviewed Comments</button>
+
+        <!-- Filter Controls -->
+        <div class="section">
+          <h4>Video Spam Filter List</h4>
+          <textarea id="videoFilterBox" rows="6" placeholder="Example:\nthanks\nbeen watching\ncool video\n..."></textarea>
+          <div class="filter-controls">
+            <input type="text" id="addVideoFilterInput" placeholder="Add new video filter phrase..." />
+            <button id="addVideoFilter">➕ Add Filter</button>
+            <button id="saveVideoFilter">💾 Save Filter</button>
+            <button id="resetVideoFilter">♻️ Reset to Defaults</button>
+          </div>
+        </div>
       </div>
 
       <!-- Live Mode Tab -->
@@ -221,6 +254,18 @@
         <div class="section">
           <h4>Live Chat Log</h4>
           <div id="liveLogBox">🟢 Waiting for chat activity...</div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="section">
+          <h4>Live Chat Spam Filter List</h4>
+          <textarea id="liveFilterBox" rows="6" placeholder="Example:\nsub to me\nclick my profile\nfree gift\n..."></textarea>
+          <div class="filter-controls">
+            <input type="text" id="addLiveFilterInput" placeholder="Add new live filter phrase..." />
+            <button id="addLiveFilter">➕ Add Filter</button>
+            <button id="saveLiveFilter">💾 Save Filter</button>
+            <button id="resetLiveFilter">♻️ Reset to Defaults</button>
+          </div>
         </div>
       </div>
     </div>
