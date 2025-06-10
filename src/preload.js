@@ -1,29 +1,33 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-  // === OAuth & Config ===
-  authorizeYouTube: () => ipcRenderer.invoke('authorize-youtube'),
-  loadConfig: () => ipcRenderer.invoke('load-config'),
-  saveConfig: (config) => ipcRenderer.send('save-config', config),
+  // === Step 1: OAuth Client Credentials ===
   saveEnvFile: (clientId, clientSecret) =>
     ipcRenderer.invoke('save-env-file', clientId, clientSecret),
 
-  // === Comment Analysis ===
-  analyzeComments: (videoLink) => ipcRenderer.invoke('analyze-comments', videoLink),
+  // === Step 2: YouTube Authorization ===
+  authorizeYouTube: () => ipcRenderer.invoke('authorize-youtube'),
 
-  // === Manual Review Support ===
+  // === Config Management ===
+  loadConfig: () => ipcRenderer.invoke('load-config'),
+  saveConfig: (config) => ipcRenderer.send('save-config', config),
+
+  // === Step 3: Comment Analysis ===
+  analyzeComments: (videoLink) =>
+    ipcRenderer.invoke('analyze-comments', videoLink),
+  deleteHighlyLikely: () => ipcRenderer.invoke('delete-highly-likely'),
+
+  // === Manual Review Workflow ===
   getReviewComments: () => ipcRenderer.invoke('get-review-comments'),
   submitReviewedComments: (commentIds) =>
     ipcRenderer.send('submit-reviewed-comments', commentIds),
-
-  // === Comment Deletion ===
-  deleteHighlyLikely: () => ipcRenderer.invoke('delete-highly-likely'),
   deleteReviewedComments: () => ipcRenderer.invoke('delete-reviewed-comments'),
 
-  // === Live Chat Monitoring ===
+  // === Live Chat Monitor ===
   startLiveMonitor: (videoId) => ipcRenderer.send('start-live-monitor', videoId),
   stopLiveMonitor: () => ipcRenderer.send('stop-live-monitor'),
-  deleteLiveComment: (commentId) => ipcRenderer.invoke('delete-live-comment', commentId),
+  deleteLiveComment: (commentId) =>
+    ipcRenderer.invoke('delete-live-comment', commentId),
 
   onLiveChatMessage: (callback) => {
     ipcRenderer.removeAllListeners('live-chat-message');
@@ -34,9 +38,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
 
-  // === Filter Management ===
-  addFilterEntry: (mode, entry) => ipcRenderer.invoke('add-filter-entry', mode, entry),
-  resetFilters: (mode) => ipcRenderer.invoke('reset-filters', mode),
+  // === Filter Management (Optional) ===
+  addFilterEntry: (mode, entry) =>
+    ipcRenderer.invoke('add-filter-entry', mode, entry),
+  resetFilters: (mode) =>
+    ipcRenderer.invoke('reset-filters', mode),
 
   // === Step Navigation ===
   loadStep2: () => ipcRenderer.send('load-step-2'),
