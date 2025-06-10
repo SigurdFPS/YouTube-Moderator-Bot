@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="YouTube Comment Cleaner – Analyze and moderate spam comments and live chat in real time." />
   <title>YouTube Comment Cleaner</title>
   <style>
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #0f0f0f;
       color: #f0f0f0;
     }
@@ -116,7 +118,9 @@
     <!-- Step 1: Enter Client Credentials -->
     <div id="step1" class="step active">
       <h2>Step 1: Enter YouTube OAuth Credentials</h2>
+      <label for="clientIdInput">Client ID:</label>
       <input id="clientIdInput" type="text" placeholder="YT_CLIENT_ID" />
+      <label for="clientSecretInput">Client Secret:</label>
       <input id="clientSecretInput" type="text" placeholder="YT_CLIENT_SECRET" />
       <button onclick="loadCredentials()">Save and Continue</button>
     </div>
@@ -137,6 +141,7 @@
 
       <!-- Video Analysis Tab -->
       <div id="video" class="tab-content active">
+        <label for="videoLink">YouTube Video Link:</label>
         <input type="text" id="videoLink" placeholder="Paste YouTube Video Link Here" />
         <div id="logBox">🔌 Bot ready.</div>
 
@@ -162,7 +167,12 @@
 
       <!-- Live Mode Tab -->
       <div id="live" class="tab-content">
-        <input id="liveVideoId" type="text" placeholder="Enter Live Video ID (from URL)" />
+        <label for="liveVideoId">Live Video ID:</label>
+        <input
+          id="liveVideoId"
+          type="text"
+          placeholder="Enter Live Video ID (e.g., abc123XYZ from https://youtube.com/watch?v=abc123XYZ)"
+        />
         <div class="live-controls">
           <button id="startLiveMonitor">🚨 Start Live Monitor</button>
           <button id="stopLiveMonitor">🛑 Stop Monitoring</button>
