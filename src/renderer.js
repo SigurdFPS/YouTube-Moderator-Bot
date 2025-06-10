@@ -1,9 +1,8 @@
-// == Existing Imports ==
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-// == DOM Element Selections ==
+// ============ DOM SELECTIONS ============
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -33,10 +32,9 @@ const stopBtn = document.getElementById('stopLiveMonitor');
 const liveVideoIdInput = document.getElementById('liveVideoId');
 const liveLogBox = document.getElementById('liveLogBox');
 
-const themeToggle = document.getElementById('themeToggle');
 const fontSelect = document.getElementById('fontSelect');
 
-// == Filter Controls ==
+// Filter Controls
 const videoFilterBox = document.getElementById('videoFilterBox');
 const liveFilterBox = document.getElementById('liveFilterBox');
 const saveVideoFilterBtn = document.getElementById('saveVideoFilter');
@@ -48,18 +46,17 @@ const addLiveFilterBtn = document.getElementById('addLiveFilterBtn');
 const newVideoFilterInput = document.getElementById('newVideoFilterInput');
 const newLiveFilterInput = document.getElementById('newLiveFilterInput');
 
-// == Paths ==
+// Paths
 const videoFilterPath = path.join(__dirname, 'src/filters/blacklist_video.json');
 const liveFilterPath = path.join(__dirname, 'src/filters/blacklist_live.json');
 
-// == Toast Utility ==
+// ============ UTILS ============
 function showToast(message = '✔️ Task complete') {
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-// == Log Utilities ==
 function appendLog(line) {
   logBox.textContent += `\n${line}`;
   logBox.scrollTop = logBox.scrollHeight;
@@ -72,13 +69,12 @@ function appendLiveLog(line) {
   liveLogBox.scrollTop = liveLogBox.scrollHeight;
 }
 
-// == Tab Logic ==
 function switchTab(tabId) {
   tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
   tabContents.forEach(content => content.classList.toggle('active', content.id === tabId));
 }
 
-// == Step 1: Save Client ID/Secret ==
+// ============ STEP 1: Save .env ============
 window.loadCredentials = async () => {
   const clientId = clientIdInput.value.trim();
   const clientSecret = clientSecretInput.value.trim();
@@ -97,7 +93,7 @@ window.loadCredentials = async () => {
   }
 };
 
-// == Step 2: OAuth ==
+// ============ STEP 2: OAuth ============
 authBtn.addEventListener('click', async () => {
   appendLog('🔗 Authorizing...');
   const result = await window.api.authorizeYouTube();
@@ -111,7 +107,7 @@ authBtn.addEventListener('click', async () => {
   }
 });
 
-// == Video Analysis Logic ==
+// ============ STEP 3: Comment Analysis ============
 videoLinkInput.addEventListener('change', async () => {
   const link = videoLinkInput.value.trim();
   if (!link.includes('youtube.com') && !link.includes('youtu.be')) {
@@ -151,7 +147,7 @@ deleteReviewedBtn.addEventListener('click', async () => {
   showToast(msg);
 });
 
-// == Live Chat ==
+// ============ LIVE CHAT ============
 let activeMessageCache = new Set();
 
 startBtn.addEventListener('click', async () => {
@@ -183,14 +179,7 @@ ipcRenderer.on('live-log', (_e, payload) => {
   });
 });
 
-// == Theme & Font ==
-function applyTheme(theme) {
-  document.body.classList.remove('light', 'dark');
-  document.body.classList.add(theme);
-  themeToggle.textContent = theme === 'dark' ? '🌙 Dark Mode' : '🌞 Light Mode';
-  window.api.saveConfig({ theme });
-}
-
+// ============ CONFIG: Font Theme ============
 function applyFontTheme(fontTheme) {
   document.body.dataset.fontTheme = fontTheme;
   window.api.saveConfig({ fontTheme });
@@ -198,23 +187,16 @@ function applyFontTheme(fontTheme) {
 
 async function loadAndApplyConfig() {
   const config = await window.api.loadConfig();
-  const theme = config?.theme || 'light';
   const fontTheme = config?.fontTheme || 'default';
-  applyTheme(theme);
   applyFontTheme(fontTheme);
   if (fontSelect) fontSelect.value = fontTheme;
 }
-
-themeToggle?.addEventListener('click', () => {
-  const current = document.body.classList.contains('dark') ? 'dark' : 'light';
-  applyTheme(current === 'dark' ? 'light' : 'dark');
-});
 
 fontSelect?.addEventListener('change', (e) => {
   applyFontTheme(e.target.value);
 });
 
-// == Load & Save Filter Files ==
+// ============ FILTERS ============
 function loadFilter(path, targetBox) {
   if (fs.existsSync(path)) {
     const content = fs.readFileSync(path, 'utf-8');
@@ -239,7 +221,7 @@ function resetFilter(path, sourceBox, defaults) {
   showToast('🔁 Filter reset');
 }
 
-// == Add Filter Entries ==
+// Add Entry Buttons
 addVideoFilterBtn?.addEventListener('click', async () => {
   const entry = newVideoFilterInput.value.trim();
   if (!entry) return showToast('❗ Empty entry');
@@ -258,24 +240,7 @@ addLiveFilterBtn?.addEventListener('click', async () => {
   showToast('➕ Added to Live filter');
 });
 
-// == Init Load ==
-window.addEventListener('DOMContentLoaded', async () => {
-  await loadAndApplyConfig();
-
-  const tokenPath = path.join(__dirname, 'tokens.json');
-  if (fs.existsSync(tokenPath)) {
-    step1.classList.remove('active');
-    step2.classList.remove('active');
-    step3.classList.add('active');
-    appendLog('✅ YouTube already authorized');
-    showToast('Auto-authorized');
-  }
-
-  loadFilter(videoFilterPath, videoFilterBox);
-  loadFilter(liveFilterPath, liveFilterBox);
-});
-
-// == Save / Reset Buttons ==
+// Save / Reset Buttons
 saveVideoFilterBtn?.addEventListener('click', () => saveFilter(videoFilterPath, videoFilterBox));
 resetVideoFilterBtn?.addEventListener('click', () =>
   resetFilter(videoFilterPath, videoFilterBox, [
@@ -295,3 +260,20 @@ resetLiveFilterBtn?.addEventListener('click', () =>
     'sub4sub'
   ])
 );
+
+// ============ INIT ============
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadAndApplyConfig();
+
+  const tokenPath = path.join(__dirname, 'tokens.json');
+  if (fs.existsSync(tokenPath)) {
+    step1.classList.remove('active');
+    step2.classList.remove('active');
+    step3.classList.add('active');
+    appendLog('✅ YouTube already authorized');
+    showToast('Auto-authorized');
+  }
+
+  loadFilter(videoFilterPath, videoFilterBox);
+  loadFilter(liveFilterPath, liveFilterBox);
+});
