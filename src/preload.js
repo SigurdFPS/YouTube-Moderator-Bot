@@ -5,13 +5,16 @@ contextBridge.exposeInMainWorld('api', {
   authorizeYouTube: () => ipcRenderer.invoke('authorize-youtube'),
   loadConfig: () => ipcRenderer.invoke('load-config'),
   saveConfig: (config) => ipcRenderer.send('save-config', config),
+  saveEnvFile: (clientId, clientSecret) =>
+    ipcRenderer.invoke('save-env-file', clientId, clientSecret),
 
   // === Comment Analysis ===
   analyzeComments: (videoLink) => ipcRenderer.invoke('analyze-comments', videoLink),
 
   // === Manual Review Support ===
   getReviewComments: () => ipcRenderer.invoke('get-review-comments'),
-  submitReviewedComments: (commentIds) => ipcRenderer.send('submit-reviewed-comments', commentIds),
+  submitReviewedComments: (commentIds) =>
+    ipcRenderer.send('submit-reviewed-comments', commentIds),
 
   // === Comment Deletion ===
   deleteHighlyLikely: () => ipcRenderer.invoke('delete-highly-likely'),
@@ -26,6 +29,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.removeAllListeners('live-chat-message');
     ipcRenderer.on('live-chat-message', (_, msg) => callback(msg));
   },
+
   onLiveMonitorStopped: (callback) => {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
