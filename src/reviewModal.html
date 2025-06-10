@@ -1,75 +1,128 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Review Comments</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #121212;
-      color: #f0f0f0;
-      padding: 20px;
+    :root {
+      --color-bg-light: #f9f9fb;
+      --color-text-light: #111;
+      --color-box-light: #ffffff;
+      --border-light: #e0e0e0;
+
+      --color-bg-dark: #121212;
+      --color-text-dark: #f0f0f0;
+      --color-box-dark: #1e1e1e;
+      --border-dark: #2a2a2a;
+
+      --accent: #2196f3;
+    }
+
+    html, body {
       margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.light {
+      background: var(--color-bg-light);
+      color: var(--color-text-light);
+    }
+
+    body.dark {
+      background: var(--color-bg-dark);
+      color: var(--color-text-dark);
     }
 
     h2 {
-      margin-bottom: 20px;
+      text-align: center;
+      margin: 30px 0;
+      font-weight: 600;
+    }
+
+    form {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
     }
 
     .comment-box {
+      background-color: var(--color-box-light);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 20px;
       margin-bottom: 20px;
-      padding: 15px;
-      background-color: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      transition: background 0.3s, border 0.3s;
+    }
+
+    body.dark .comment-box {
+      background-color: var(--color-box-dark);
+      border-color: var(--border-dark);
     }
 
     .comment-meta {
       font-size: 13px;
-      color: #aaa;
-      margin-bottom: 6px;
+      opacity: 0.7;
+      margin-bottom: 8px;
     }
 
     .comment-text {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       font-size: 15px;
     }
 
     .choice {
       display: flex;
-      gap: 20px;
+      gap: 30px;
       align-items: center;
+      margin-top: 10px;
     }
 
     label {
       margin-left: 5px;
       margin-right: 15px;
+      font-size: 14px;
     }
 
     button {
-      padding: 10px 20px;
-      margin-top: 10px;
-      background-color: #2196f3;
+      display: block;
+      margin: 40px auto 20px;
+      padding: 12px 28px;
+      background-color: var(--accent);
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
+      font-size: 15px;
       cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background-color: #1976d2;
     }
 
     #toast {
       position: fixed;
-      bottom: 15px;
+      bottom: 20px;
       left: 20px;
-      background: #2a2a2a;
-      color: #fff;
-      padding: 10px 15px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 10px 16px;
       border-radius: 5px;
+      font-size: 14px;
       opacity: 0;
+      pointer-events: none;
       transition: opacity 0.4s ease;
     }
 
     #toast.show {
       opacity: 1;
+      pointer-events: auto;
     }
   </style>
 </head>
@@ -83,7 +136,16 @@
   <script>
     const { ipcRenderer } = require('electron');
 
+    async function applyThemeFromConfig() {
+      const config = await ipcRenderer.invoke('load-config');
+      const theme = config?.theme || 'light';
+      document.body.classList.remove('light', 'dark');
+      document.body.classList.add(theme);
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
+      await applyThemeFromConfig();
+
       const comments = await ipcRenderer.invoke('get-review-comments');
       const form = document.getElementById('reviewForm');
 
@@ -95,9 +157,9 @@
           <div class="comment-text">"${c.text}"</div>
           <div class="choice">
             <input type="radio" name="review-${i}" value="keep" checked>
-            <label>Keep</label>
+            <label for="keep-${i}">Keep</label>
             <input type="radio" name="review-${i}" value="delete">
-            <label>Delete</label>
+            <label for="delete-${i}">Delete</label>
           </div>
           <input type="hidden" name="commentId-${i}" value="${c.id}">
           <input type="hidden" name="reason-${i}" value="${c.reason}">
