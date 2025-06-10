@@ -220,3 +220,26 @@ ipcRenderer.on('live-log', (_event, payload) => {
     });
   }
 });
+
+// ===== THEME TOGGLE =====
+
+const themeToggle = document.getElementById('themeToggle');
+
+function applyTheme(theme) {
+  document.body.classList.remove('light', 'dark');
+  document.body.classList.add(theme);
+  themeToggle.textContent = theme === 'dark' ? '🌙 Dark Mode' : '🌞 Light Mode';
+  localStorage.setItem('theme', theme);
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+  const newTheme = current === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+});
+
+// On load
+window.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  applyTheme(savedTheme);
+});
