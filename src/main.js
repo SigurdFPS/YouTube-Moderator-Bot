@@ -13,6 +13,7 @@ const { writeLog, writeGroup } = require('./logger');
 const {
   startLiveChatMonitor,
   stopPolling,
+  setMainWindow,
 } = require('./liveChat');
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
@@ -52,11 +53,11 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+  setMainWindow(mainWindow); // ✅ Inject into liveChat.js
 }
 
 app.whenReady().then(() => {
   createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -136,18 +137,14 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
 
 // === IPC: Deletion Logic ===
 ipcMain.handle('delete-highly-likely', async () => {
-  if (!lastAnalyzed.highlyLikely.length) {
-    return '⚠️ Nothing to delete.';
-  }
+  if (!lastAnalyzed.highlyLikely.length) return '⚠️ Nothing to delete.';
 
   const deleted = await deleteComments(lastAnalyzed.highlyLikely.map(c => c.id));
   writeLog(`🧹 Deleted ${deleted.length}`, 'video');
   return `🧹 Deleted ${deleted.length}`;
 });
 
-ipcMain.handle('get-review-comments', () => {
-  return lastAnalyzed.possibleLikely;
-});
+ipcMain.handle('get-review-comments', () => lastAnalyzed.possibleLikely);
 
 ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   const deleted = await deleteComments(idsToDelete);
@@ -169,25 +166,21 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
 
   liveMonitorActive = true;
 
-  await startLiveChatMonitor(async ({ highLikely, possibleLikely, all }) => {
-    for (const msg of highLikely) {
-      await deleteComments([msg.id]);
-      writeLog(`🛑 Deleted: ${msg.text}`, 'live');
-      mainWindow.webContents.send('live-log', `🛑 Deleted: ${msg.text}`);
+  await startLiveChatMonitor(async (flaggedMessages) => {
+    for (const msg of flaggedMessages) {
+      if (msg.isLikelySpam) {
+        await deleteComments([msg.id]);
+        writeLog(`🛑 Deleted: ${msg.text}`, 'live');
+        mainWindow.webContents.send('live-log', `🛑 Deleted: ${msg.text}`);
+      } else {
+        writeLog(`⚠️ Suspect: ${msg.text}`, 'live');
+        mainWindow.webContents.send('live-log', `⚠️ Suspect: ${msg.text}`);
+      }
     }
-
-    for (const msg of possibleLikely) {
-      writeLog(`⚠️ Suspect: ${msg.text}`, 'live');
-      mainWindow.webContents.send('live-log', `⚠️ Suspect: ${msg.text}`);
-    }
-
-    for (const msg of all) {
-      writeLog(`💬 ${msg.author}: ${msg.text}`, 'live');
-      mainWindow.webContents.send('live-log', `💬 ${msg.author}: ${msg.text}`);
-    }
-  }, videoId); // Pass videoId if provided
+  }, videoId); // optional videoId for override
 
   writeLog('🟢 Live monitor started', 'live');
+  mainWindow.webContents.send('live-log', '🟢 Live monitor started');
 });
 
 ipcMain.on('stop-live-monitor', () => {
@@ -209,9 +202,7 @@ ipcMain.handle('delete-live-comment', async (_event, commentId) => {
 });
 
 // === IPC: Config ===
-ipcMain.handle('load-config', () => {
-  return loadConfig();
-});
+ipcMain.handle('load-config', () => loadConfig());
 
 ipcMain.on('save-config', (_event, newConfig) => {
   const current = loadConfig();
