@@ -5,63 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="YouTube Comment Cleaner – Analyze and moderate spam comments and live chat in real time." />
   <title>YouTube Comment Cleaner</title>
+
+  <!-- Fonts -->
+  <link id="fontLink1" href="https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap" rel="stylesheet">
+  <link id="fontLink2" href="https://fonts.googleapis.com/css2?family=Tahoma&display=swap" rel="stylesheet">
+
   <style>
-    body.light {
-      background: #ffffff;
-      color: #000000;
-    }
-
-    body.light input,
-    body.light textarea,
-    body.light #logBox,
-    body.light #highLikely,
-    body.light #possibleLikely,
-    body.light #safeCount,
-    body.light #liveLogBox {
-      background: #f0f0f0;
-      color: #000;
-      border: 1px solid #aaa;
-    }
-
-    body.light .tab-button {
-      background: #e0e0e0;
-      color: #333;
-    }
-
-    body.light .tab-button.active {
-      background: #1d72f3;
-      color: white;
-    }
-
-    body.dark {
-      background: #0f0f0f;
-      color: #f0f0f0;
-    }
-
-    body.dark input,
-    body.dark textarea,
-    body.dark #logBox,
-    body.dark #highLikely,
-    body.dark #possibleLikely,
-    body.dark #safeCount,
-    body.dark #liveLogBox {
-      background: #1a1a1a;
-      color: #fff;
-      border: 1px solid #333;
-    }
-
-    body.dark .tab-button {
-      background: #222;
-      color: #ccc;
-    }
-
-    body.dark .tab-button.active {
-      background: #1d72f3;
-      color: white;
+    :root {
+      --background: #ffffff;
+      --text: #000000;
+      --button-bg: #1d72f3;
+      --button-text: #fff;
+      --input-bg: #f0f0f0;
+      --input-text: #000;
     }
 
     body {
       margin: 0;
+      background: var(--background);
+      color: var(--text);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
@@ -82,14 +44,16 @@
       border: 1px solid #333;
       width: 100%;
       margin-top: 10px;
+      background: var(--input-bg);
+      color: var(--input-text);
     }
 
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #1d72f3;
+      background: var(--button-bg);
       border: none;
-      color: white;
+      color: var(--button-text);
       cursor: pointer;
     }
 
@@ -103,6 +67,13 @@
       padding: 10px 20px;
       border: none;
       cursor: pointer;
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .tab-button.active {
+      background: #1d72f3;
+      color: white;
     }
 
     .tab-content {
@@ -123,6 +94,9 @@
       white-space: pre-wrap;
       height: 150px;
       overflow-y: auto;
+      background: var(--input-bg);
+      color: var(--input-text);
+      border: 1px solid #aaa;
     }
 
     .toast {
@@ -152,20 +126,36 @@
       display: none;
     }
 
-    #themeToggle {
+    #themeToggle,
+    #fontStyleSelect {
       position: absolute;
       top: 15px;
-      right: 15px;
       padding: 6px 12px;
       background: #555;
       color: white;
       border: none;
       cursor: pointer;
     }
+
+    #themeToggle {
+      right: 15px;
+    }
+
+    #fontStyleSelect {
+      right: 140px;
+    }
   </style>
 </head>
 <body>
   <button id="themeToggle">🌞 Light Mode</button>
+  <select id="fontStyleSelect" title="Select Theme">
+    <option value="default">Default</option>
+    <option value="default-dark">Default - Dark</option>
+    <option value="classic">Classic</option>
+    <option value="modern">Modern</option>
+    <option value="futuristic">Futuristic</option>
+    <option value="minimalist">Minimalist</option>
+  </select>
 
   <div class="container">
 
@@ -222,11 +212,7 @@
       <!-- Live Mode Tab -->
       <div id="live" class="tab-content">
         <label for="liveVideoId">Live Video ID:</label>
-        <input
-          id="liveVideoId"
-          type="text"
-          placeholder="Enter Live Video ID (e.g., abc123XYZ from https://youtube.com/watch?v=abc123XYZ)"
-        />
+        <input id="liveVideoId" type="text" placeholder="Enter Live Video ID" />
         <div class="live-controls">
           <button id="startLiveMonitor">🚨 Start Live Monitor</button>
           <button id="stopLiveMonitor">🛑 Stop Monitoring</button>
