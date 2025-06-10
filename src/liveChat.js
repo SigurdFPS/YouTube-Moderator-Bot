@@ -1,12 +1,14 @@
 const { google } = require('googleapis');
 const { getOAuthClient } = require('./auth');
 const { analyzeComments } = require('./bot');
+const { writeLog } = require('./logger');
 
 const youtube = google.youtube('v3');
 
 let polling = false;
 let interval = null;
 let nextPageToken = '';
+let mainWindowRef = null;
 
 /**
  * Get the active liveChatId from the user's current livestream.
@@ -30,7 +32,6 @@ async function getLiveChatId() {
 
 /**
  * Start polling the live chat and return detected messages.
- * Each message is enhanced with isLikelySpam boolean.
  */
 async function startLiveChatListener(liveChatIdOverride) {
   const auth = getOAuthClient();
@@ -52,7 +53,7 @@ async function startLiveChatListener(liveChatIdOverride) {
     publishedAt: item.snippet.publishedAt,
   }));
 
-  const analysis = analyzeComments(rawMessages);
+  const analysis = analyzeComments(rawMessages, 'live');
 
   const highlyLikelyIds = new Set(analysis.highLikely.map(m => m.id));
 
@@ -64,20 +65,30 @@ async function startLiveChatListener(liveChatIdOverride) {
   return {
     liveChatId,
     messages: enrichedMessages,
+    stats: analysis,
   };
 }
 
 /**
- * Long-running monitor (not used in IPC, but available).
+ * Start long-running live chat monitor with spam detection callback.
  */
 async function startLiveChatMonitor(onSpamDetected = () => {}) {
   try {
     const liveChatId = await getLiveChatId();
     console.log('🎥 Live chat found. Starting monitor...');
+    writeLog('🎥 Live chat found. Starting monitor...', 'live');
 
     polling = true;
     interval = setInterval(async () => {
-      const { messages } = await startLiveChatListener(liveChatId);
+      const { messages, stats } = await startLiveChatListener(liveChatId);
+
+      // Surface stats to UI
+      if (mainWindowRef) {
+        mainWindowRef.webContents.send(
+          'live-log',
+          `📊 Analyzed ${stats.full} messages — 🛑 High: ${stats.highLikely.length}, ⚠️ Possible: ${stats.possibleLikely.length}, ✅ Safe: ${stats.safeCount}`
+        );
+      }
 
       const flagged = messages.filter(m => m.isLikelySpam);
       if (flagged.length > 0) {
@@ -86,6 +97,9 @@ async function startLiveChatMonitor(onSpamDetected = () => {}) {
     }, 5000);
   } catch (err) {
     console.error('❌ Live chat monitor error:', err.message);
+    if (mainWindowRef) {
+      mainWindowRef.webContents.send('live-log', `❌ Live monitor failed: ${err.message}`);
+    }
   }
 }
 
@@ -96,6 +110,14 @@ function stopPolling() {
   polling = false;
   if (interval) clearInterval(interval);
   console.log('🛑 Live chat polling stopped.');
+  writeLog('🛑 Live chat polling stopped.', 'live');
+}
+
+/**
+ * Inject mainWindow from main.js for UI log emission.
+ */
+function setMainWindow(win) {
+  mainWindowRef = win;
 }
 
 module.exports = {
@@ -103,4 +125,5 @@ module.exports = {
   startLiveChatListener,
   startLiveChatMonitor,
   stopPolling,
+  setMainWindow,
 };
