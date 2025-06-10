@@ -52,8 +52,8 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile('index.html');
-  setMainWindow(mainWindow); // ✅ Inject into liveChat.js
+  mainWindow.loadFile(path.join(__dirname, 'src/index.html'));
+  setMainWindow(mainWindow); // Required for live chat logging
 }
 
 app.whenReady().then(() => {
@@ -67,7 +67,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// === IPC: YouTube OAuth ===
+// === YouTube OAuth ===
 ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
@@ -79,7 +79,7 @@ ipcMain.handle('authorize-youtube', async () => {
   }
 });
 
-// === IPC: Comment Analysis ===
+// === Comment Analysis ===
 ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   const logSteps = [];
   try {
@@ -135,10 +135,9 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   }
 });
 
-// === IPC: Deletion Logic ===
+// === Deletion Actions ===
 ipcMain.handle('delete-highly-likely', async () => {
   if (!lastAnalyzed.highlyLikely.length) return '⚠️ Nothing to delete.';
-
   const deleted = await deleteComments(lastAnalyzed.highlyLikely.map(c => c.id));
   writeLog(`🧹 Deleted ${deleted.length}`, 'video');
   return `🧹 Deleted ${deleted.length}`;
@@ -151,11 +150,11 @@ ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   writeLog(`🗑️ Manually deleted ${deleted.length}`, 'video');
 });
 
-ipcMain.handle('delete-reviewed-comments', async () => {
+ipcMain.handle('delete-reviewed-comments', () => {
   return '🧼 Use the review window to mark comments.';
 });
 
-// === IPC: Live Chat ===
+// === Live Chat Monitor ===
 let liveMonitorActive = false;
 
 ipcMain.on('start-live-monitor', async (_event, videoId) => {
@@ -177,7 +176,7 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
         mainWindow.webContents.send('live-log', `⚠️ Suspect: ${msg.text}`);
       }
     }
-  }, videoId); // optional videoId for override
+  }, videoId);
 
   writeLog('🟢 Live monitor started', 'live');
   mainWindow.webContents.send('live-log', '🟢 Live monitor started');
@@ -191,7 +190,6 @@ ipcMain.on('stop-live-monitor', () => {
   writeLog('🔴 Monitor stopped', 'live');
 });
 
-// === IPC: Live Comment Deletion ===
 ipcMain.handle('delete-live-comment', async (_event, commentId) => {
   try {
     await deleteComments([commentId]);
@@ -201,7 +199,7 @@ ipcMain.handle('delete-live-comment', async (_event, commentId) => {
   }
 });
 
-// === IPC: Config ===
+// === Config Persistence ===
 ipcMain.handle('load-config', () => loadConfig());
 
 ipcMain.on('save-config', (_event, newConfig) => {
