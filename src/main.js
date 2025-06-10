@@ -81,7 +81,6 @@ ipcMain.handle('authorize-youtube', async () => {
 // === IPC: Comment Analysis ===
 ipcMain.handle('analyze-comments', async (_event, videoLink) => {
   const logSteps = [];
-
   try {
     const videoId = extractVideoId(videoLink);
     if (!videoId) throw new Error('Invalid YouTube link');
@@ -93,7 +92,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     logSteps.push(`📥 ${comments.length} comments fetched`);
     writeLog(`📥 ${comments.length} comments fetched`, 'video');
 
-    const analysis = analyzeComments(comments);
+    const analysis = analyzeComments(comments, 'video');
     lastAnalyzed.highlyLikely = analysis.highLikely;
     lastAnalyzed.possibleLikely = analysis.possibleLikely;
 
@@ -186,7 +185,7 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
       writeLog(`💬 ${msg.author}: ${msg.text}`, 'live');
       mainWindow.webContents.send('live-log', `💬 ${msg.author}: ${msg.text}`);
     }
-  });
+  }, videoId); // Pass videoId if provided
 
   writeLog('🟢 Live monitor started', 'live');
 });
@@ -197,6 +196,16 @@ ipcMain.on('stop-live-monitor', () => {
   mainWindow.webContents.send('live-log', '🔴 Stopped');
   mainWindow.webContents.send('live-monitor-stopped');
   writeLog('🔴 Monitor stopped', 'live');
+});
+
+// === IPC: Live Comment Deletion ===
+ipcMain.handle('delete-live-comment', async (_event, commentId) => {
+  try {
+    await deleteComments([commentId]);
+    return `🗑️ Deleted ${commentId}`;
+  } catch (err) {
+    return `❌ Error deleting: ${err.message}`;
+  }
 });
 
 // === IPC: Config ===
