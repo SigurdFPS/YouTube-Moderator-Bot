@@ -16,9 +16,10 @@ const {
   setMainWindow,
 } = require('./liveChat');
 
-const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
-const ENV_PATH = path.join(__dirname, '.env');
-const TOKENS_PATH = path.join(__dirname, 'tokens.json');
+const APPDATA_DIR = path.join(app.getPath('userData'), 'YouTubeCommentCleaner');
+const CONFIG_PATH = path.join(APPDATA_DIR, 'config.json');
+const ENV_PATH = path.join(APPDATA_DIR, '.env');
+const TOKENS_PATH = path.join(APPDATA_DIR, 'tokens.json');
 
 let mainWindow;
 let lastAnalyzed = {
@@ -26,8 +27,13 @@ let lastAnalyzed = {
   possibleLikely: [],
 };
 
+function ensureAppDir() {
+  if (!fs.existsSync(APPDATA_DIR)) fs.mkdirSync(APPDATA_DIR, { recursive: true });
+}
+
 function loadConfig() {
   try {
+    ensureAppDir();
     if (fs.existsSync(CONFIG_PATH)) {
       return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
     }
@@ -39,6 +45,7 @@ function loadConfig() {
 
 function saveConfig(config) {
   try {
+    ensureAppDir();
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
   } catch (err) {
     console.error('Failed to save config:', err);
@@ -48,7 +55,6 @@ function saveConfig(config) {
 function getStartupStepFile() {
   const envExists = fs.existsSync(ENV_PATH);
   const tokensExist = fs.existsSync(TOKENS_PATH);
-
   if (!envExists) return 'step1.html';
   if (!tokensExist) return 'step2.html';
   return 'step3.html';
@@ -79,11 +85,32 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// === YouTube OAuth ===
+// === Step Navigation ===
+ipcMain.on('load-step-2', () => {
+  mainWindow.loadFile(path.join(__dirname, 'src/steps/step2.html'));
+});
+ipcMain.on('load-step-3', () => {
+  mainWindow.loadFile(path.join(__dirname, 'src/steps/step3.html'));
+});
+
+// === Step 1: Save .env ===
+ipcMain.handle('save-env-file', async (_event, clientId, clientSecret) => {
+  try {
+    ensureAppDir();
+    const content = `YT_CLIENT_ID=${clientId}\nYT_CLIENT_SECRET=${clientSecret}\nGOOGLE_REDIRECT_URI=http://localhost:42813\nREDIRECT_PORT=42813`;
+    fs.writeFileSync(ENV_PATH, content);
+    return { success: true };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+});
+
+// === Step 2: YouTube OAuth ===
 ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
     writeLog('✅ YouTube account successfully authenticated', 'video');
+    fs.writeFileSync(TOKENS_PATH, '{}'); // Dummy marker
     return '✅ YouTube account successfully authenticated';
   } catch (err) {
     writeLog(`❌ Authorization failed: ${err.message}`, 'video');
