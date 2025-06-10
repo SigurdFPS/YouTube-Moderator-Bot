@@ -97,7 +97,12 @@ ipcMain.on('load-step-3', () => {
 ipcMain.handle('save-env-file', async (_event, clientId, clientSecret) => {
   try {
     ensureAppDir();
-    const content = `YT_CLIENT_ID=${clientId}\nYT_CLIENT_SECRET=${clientSecret}\nGOOGLE_REDIRECT_URI=http://localhost:42813\nREDIRECT_PORT=42813`;
+    const content = [
+      `YT_CLIENT_ID=${clientId}`,
+      `YT_CLIENT_SECRET=${clientSecret}`,
+      `GOOGLE_REDIRECT_URI=http://localhost:42813`,
+      `REDIRECT_PORT=42813`,
+    ].join('\n');
     fs.writeFileSync(ENV_PATH, content);
     return { success: true };
   } catch (err) {
@@ -110,7 +115,7 @@ ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
     writeLog('✅ YouTube account successfully authenticated', 'video');
-    fs.writeFileSync(TOKENS_PATH, '{}'); // Dummy marker
+    fs.writeFileSync(TOKENS_PATH, '{}'); // Auth marker
     return '✅ YouTube account successfully authenticated';
   } catch (err) {
     writeLog(`❌ Authorization failed: ${err.message}`, 'video');
@@ -250,7 +255,6 @@ ipcMain.handle('delete-live-comment', async (_event, commentId) => {
 
 // === Config Persistence ===
 ipcMain.handle('load-config', () => loadConfig());
-
 ipcMain.on('save-config', (_event, newConfig) => {
   const current = loadConfig();
   const merged = { ...current, ...newConfig };
