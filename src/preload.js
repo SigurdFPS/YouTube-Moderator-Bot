@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('api', {
   // === Step 1: OAuth Client Credentials ===
   saveEnvFile: (clientId, clientSecret) =>
     ipcRenderer.invoke('save-env-file', clientId, clientSecret),
+    envFileExists: () => ipcRenderer.invoke('envFileExists'),
 
   // === Step 2: YouTube Authorization ===
   authorizeYouTube: () =>
