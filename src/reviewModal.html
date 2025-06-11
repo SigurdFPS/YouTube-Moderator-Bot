@@ -150,15 +150,15 @@
 </head>
 <body>
   <h2>🧐 Review Somewhat Likely Comments</h2>
-  <div class="pagination">
+  <div class="pagination" role="navigation" aria-label="Pagination">
     <button id="prevPage" disabled aria-label="Previous page">Previous</button>
     <span id="pageInfo">Page 1</span>
     <button id="nextPage" aria-label="Next page">Next</button>
   </div>
-  <form id="reviewForm" aria-label="Review Comments"></form>
+  <form id="reviewForm" aria-label="Review Comments List"></form>
   <button type="button" class="submit-btn" onclick="submitReview()">Submit Reviewed Comments</button>
 
-  <div id="toast">✔️ Comments marked for deletion</div>
+  <div id="toast" role="alert" aria-live="polite">✔️ Comments marked for deletion</div>
 
   <script>
     let comments = [];
@@ -174,6 +174,8 @@
 
     function renderComments() {
       const form = document.getElementById('reviewForm');
+      if (!form) return;
+
       form.innerHTML = '';
 
       const start = (currentPage - 1) * commentsPerPage;
@@ -184,6 +186,7 @@
         const idx = start + i;
         const div = document.createElement('div');
         div.className = 'comment-box';
+        div.setAttribute('tabindex', '0');
         div.innerHTML = `
           <div class="comment-meta">👤 ${c.author || 'Unknown'} | 🕓 ${new Date(c.publishedAt).toLocaleString()}</div>
           <div class="comment-text">"${c.text}"</div>
@@ -195,13 +198,18 @@
         form.appendChild(div);
       });
 
-      document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
-      document.getElementById('prevPage').disabled = currentPage === 1;
-      document.getElementById('nextPage').disabled = end >= comments.length;
+      const pageInfo = document.getElementById('pageInfo');
+      if (pageInfo) pageInfo.textContent = `Page ${currentPage}`;
+
+      const prevBtn = document.getElementById('prevPage');
+      const nextBtn = document.getElementById('nextPage');
+      if (prevBtn) prevBtn.disabled = currentPage === 1;
+      if (nextBtn) nextBtn.disabled = end >= comments.length;
     }
 
     function showToast(message) {
       const toast = document.getElementById('toast');
+      if (!toast) return;
       toast.textContent = message;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 3000);
@@ -209,6 +217,7 @@
 
     function submitReview() {
       const form = document.getElementById('reviewForm');
+      if (!form) return;
       const checked = form.querySelectorAll('input[type="checkbox"]:checked');
       const data = Array.from(checked).map(cb => cb.value);
 
@@ -222,14 +231,14 @@
       setTimeout(() => window.close(), 1500);
     }
 
-    document.getElementById('prevPage').addEventListener('click', () => {
+    document.getElementById('prevPage')?.addEventListener('click', () => {
       if (currentPage > 1) {
         currentPage--;
         renderComments();
       }
     });
 
-    document.getElementById('nextPage').addEventListener('click', () => {
+    document.getElementById('nextPage')?.addEventListener('click', () => {
       if ((currentPage * commentsPerPage) < comments.length) {
         currentPage++;
         renderComments();
