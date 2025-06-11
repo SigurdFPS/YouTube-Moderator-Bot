@@ -6,7 +6,7 @@ const path = require('path');
 const videoFilterPath = path.join(__dirname, 'src/filters/blacklist_video.json');
 const liveFilterPath = path.join(__dirname, 'src/filters/blacklist_live.json');
 const envPath = path.join(__dirname, '.env');
-const tokenPath = path.join(__dirname, 'tokens.json');
+const configPath = path.join(__dirname, 'src/config/config.json');
 
 let step1, step2, step3;
 let clientIdInput, clientSecretInput;
@@ -36,7 +36,10 @@ async function loadStep1() {
 
     try {
       fs.writeFileSync(envPath, content);
-      window.location.href = '../steps/step2.html';
+      showToast('✅ Saved .env, loading Step 2...');
+      setTimeout(() => {
+        window.location.href = '../steps/step2.html';
+      }, 1000);
     } catch {
       showToast('❌ Failed to save .env');
     }
@@ -67,7 +70,6 @@ async function loadStep3() {
   step3 = document.getElementById('step3');
   toast = document.getElementById('toast');
 
-  // Elements
   videoLinkInput = document.getElementById('videoLink');
   logBox = document.getElementById('logBox');
   highLikelyBox = document.getElementById('highLikely');
@@ -171,7 +173,7 @@ async function loadStep3() {
     });
   });
 
-  // Filter Controls
+  // Filters
   function loadFilter(file, target) {
     if (fs.existsSync(file)) {
       const content = JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -222,15 +224,29 @@ async function loadStep3() {
 
   saveLiveFilterBtn.addEventListener('click', () => saveFilter(liveFilterPath, liveFilterBox));
   resetLiveFilterBtn.addEventListener('click', () =>
-    resetFilter(liveFilterPath, liveFilterBox, [
-      'buy',
-      'check out my channel',
-      'sub4sub'
-    ])
+    resetFilter(liveFilterPath, liveFilterBox, ['buy', 'check out my channel', 'sub4sub'])
   );
 
   loadFilter(videoFilterPath, videoFilterBox);
   loadFilter(liveFilterPath, liveFilterBox);
+}
+
+// ============ THEME LOADER ============
+function applyThemeFromConfig() {
+  if (!fs.existsSync(configPath)) return;
+
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const root = document.documentElement;
+    if (config.theme === 'dark') root.setAttribute('data-theme', 'dark');
+    else root.setAttribute('data-theme', 'light');
+
+    if (config.fontFamily) {
+      root.style.setProperty('--font-family', config.fontFamily);
+    }
+  } catch (e) {
+    console.error('Failed to load theme from config:', e);
+  }
 }
 
 // ============ HELPERS ============
@@ -256,8 +272,9 @@ function appendLiveLog(line) {
 
 // ============ INIT ============
 window.addEventListener('DOMContentLoaded', async () => {
-  const current = window.location.pathname;
+  applyThemeFromConfig();
 
+  const current = window.location.pathname;
   if (current.includes('step1.html')) await loadStep1();
   else if (current.includes('step2.html')) await loadStep2();
   else if (current.includes('step3.html')) await loadStep3();
