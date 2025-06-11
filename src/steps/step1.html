@@ -62,16 +62,27 @@
 
       try {
         const result = await window.api.saveEnvFile(clientId, clientSecret);
+
         if (result.success) {
-          status.textContent = '✅ Saved! Restarting app...';
-          setTimeout(() => {
-            window.api.reloadApp(); // triggers app.relaunch() from main.js
-          }, 1000);
+          status.textContent = '✅ Saved! Verifying file...';
+
+          // Wait briefly then check for file existence
+          setTimeout(async () => {
+            const exists = await window.api.envFileExists();
+            if (exists) {
+              status.textContent = '✅ File confirmed. Moving to Step 2...';
+              setTimeout(() => {
+                window.location.href = 'step2.html';
+              }, 800);
+            } else {
+              status.textContent = '❌ Saved, but file was not found. Try again.';
+            }
+          }, 500);
         } else {
           status.textContent = '❌ Failed to save: ' + result.message;
         }
       } catch (err) {
-        status.textContent = '❌ Error saving credentials: ' + err.message;
+        status.textContent = '❌ Error: ' + err.message;
       }
     });
   </script>
