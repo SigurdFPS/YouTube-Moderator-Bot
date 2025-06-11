@@ -6,26 +6,46 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('save-env-file', clientId, clientSecret),
 
   // === Step 2: YouTube Authorization ===
-  authorizeYouTube: () => ipcRenderer.invoke('authorize-youtube'),
+  authorizeYouTube: () =>
+    ipcRenderer.invoke('authorize-youtube'),
 
   // === Config Management ===
-  loadConfig: () => ipcRenderer.invoke('load-config'),
-  saveConfig: (config) => ipcRenderer.send('save-config', config),
+  loadConfig: () =>
+    ipcRenderer.invoke('load-config'),
+  saveConfig: (config) =>
+    ipcRenderer.send('save-config', config),
 
-  // === Step 3: Comment Analysis ===
+  // === Theme Configuration ===
+  updateFontFamily: (font) =>
+    ipcRenderer.send('update-font-family', font),
+  toggleTheme: (darkMode) =>
+    ipcRenderer.send('toggle-theme', darkMode),
+
+  // === Step Navigation ===
+  loadStep2: () =>
+    ipcRenderer.send('load-step-2'),
+  loadStep3: () =>
+    ipcRenderer.send('load-step-3'),
+
+  // === Comment Analysis ===
   analyzeComments: (videoLink) =>
     ipcRenderer.invoke('analyze-comments', videoLink),
-  deleteHighlyLikely: () => ipcRenderer.invoke('delete-highly-likely'),
+  deleteHighlyLikely: () =>
+    ipcRenderer.invoke('delete-highly-likely'),
 
   // === Manual Review Workflow ===
-  getReviewComments: () => ipcRenderer.invoke('get-review-comments'),
+  getReviewComments: () =>
+    ipcRenderer.invoke('get-review-comments'),
   submitReviewedComments: (commentIds) =>
     ipcRenderer.send('submit-reviewed-comments', commentIds),
-  deleteReviewedComments: () => ipcRenderer.invoke('delete-reviewed-comments'),
+  deleteReviewedComments: () =>
+    ipcRenderer.invoke('delete-reviewed-comments'),
 
   // === Live Chat Monitor ===
-  startLiveMonitor: (videoId) => ipcRenderer.send('start-live-monitor', videoId),
-  stopLiveMonitor: () => ipcRenderer.send('stop-live-monitor'),
+  startLiveMonitor: (videoId) =>
+    ipcRenderer.send('start-live-monitor', videoId),
+  stopLiveMonitor: () =>
+    ipcRenderer.send('stop-live-monitor'),
   deleteLiveComment: (commentId) =>
     ipcRenderer.invoke('delete-live-comment', commentId),
 
@@ -33,7 +53,6 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.removeAllListeners('live-chat-message');
     ipcRenderer.on('live-chat-message', (_, msg) => callback(msg));
   },
-
   onLiveMonitorStopped: (callback) => {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
@@ -43,16 +62,6 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('add-filter-entry', mode, entry),
   resetFilters: (mode) =>
     ipcRenderer.invoke('reset-filters', mode),
-
-  // === File System Helpers ===
   openFilterFile: (mode) =>
     ipcRenderer.invoke('open-filter-file', mode), // e.g., 'video' or 'live'
-
-  // === Font Theme Configuration ===
-  updateFontFamily: (font) =>
-    ipcRenderer.send('update-font-family', font), // Optional, if handled separately
-
-  // === Step Navigation ===
-  loadStep2: () => ipcRenderer.send('load-step-2'),
-  loadStep3: () => ipcRenderer.send('load-step-3'),
 });
