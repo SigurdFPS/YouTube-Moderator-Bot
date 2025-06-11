@@ -87,10 +87,10 @@ app.on('window-all-closed', () => {
 
 // === Step Navigation ===
 ipcMain.on('load-step-2', () => {
-  mainWindow.loadFile(path.join(__dirname, 'src/steps/step2.html'));
+  mainWindow.loadFile(path.join(__dirname, '/steps/step2.html'));
 });
 ipcMain.on('load-step-3', () => {
-  mainWindow.loadFile(path.join(__dirname, 'src/steps/step3.html'));
+  mainWindow.loadFile(path.join(__dirname, '/steps/step3.html'));
 });
 
 // === Step 1: Save .env ===
