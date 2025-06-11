@@ -260,9 +260,9 @@
       default: {
         title: "'Segoe UI', sans-serif",
         paragraph: "'Segoe UI', sans-serif",
-        text: "#000",
-        bg: "#fff",
-        accent: "#1d72f3",
+        text: "#000000",
+        bg: "#ffffff",
+        accent: "#1d72f3"
       },
       classic: {
         title: "'Oswald', sans-serif",
@@ -274,7 +274,7 @@
       modern: {
         title: "'Roboto', sans-serif",
         paragraph: "'Nunito', sans-serif",
-        text: "#222",
+        text: "#222222",
         bg: "#f6f8fa",
         accent: "#1976d2"
       },
@@ -295,7 +295,7 @@
       minimalist: {
         title: "'Source Sans Pro', sans-serif",
         paragraph: "'Source Serif Pro', serif",
-        text: "#111",
+        text: "#111111",
         bg: "#fefefe",
         accent: "#4caf50"
       }
@@ -308,14 +308,16 @@
       document.body.style.setProperty('--text', theme.text);
       document.body.style.setProperty('--bg', theme.bg);
       document.body.style.setProperty('--accent', theme.accent);
+      document.body.style.setProperty('--btn-bg', theme.accent);
+      document.body.style.setProperty('--btn-text', theme.text === '#ffffff' ? '#000000' : '#ffffff');
     }
 
     window.api.loadConfig().then(cfg => {
-      const selected = cfg.font || 'default';
+      const selected = themes.hasOwnProperty(cfg?.font) ? cfg.font : 'default';
       selector.value = selected;
       applyTheme(selected);
 
-      const isLive = cfg.mode === 'live';
+      const isLive = cfg?.mode === 'live';
       toggle.checked = isLive;
       videoTab.classList.toggle('active', !isLive);
       liveTab.classList.toggle('active', isLive);
@@ -324,7 +326,10 @@
     selector.addEventListener('change', () => {
       const selected = selector.value;
       applyTheme(selected);
-      window.api.saveConfig({ font: selected });
+      window.api.saveConfig({
+        font: selected,
+        ...themes[selected]
+      });
     });
 
     toggle.addEventListener('change', () => {
