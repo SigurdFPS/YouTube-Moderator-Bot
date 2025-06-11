@@ -70,7 +70,7 @@ function createWindow() {
   });
 
   const startupFile = getStartupStepFile();
-  mainWindow.loadFile(path.join(__dirname, 'src/steps', startupFile));
+  mainWindow.loadFile(path.join(__dirname, '/steps', startupFile));
   setMainWindow(mainWindow);
 }
 
