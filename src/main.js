@@ -22,11 +22,13 @@ const ENV_PATH = path.join(APPDATA_DIR, '.env');
 const TOKENS_PATH = path.join(APPDATA_DIR, 'tokens.json');
 
 let mainWindow;
-let reviewWindow; // NEW: Modal reference
+let reviewWindow;
 let lastAnalyzed = {
   highlyLikely: [],
   possibleLikely: [],
 };
+
+const processedLiveMessages = new Set();
 
 function ensureAppDir() {
   if (!fs.existsSync(APPDATA_DIR)) fs.mkdirSync(APPDATA_DIR, { recursive: true });
@@ -138,7 +140,7 @@ ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
     writeLog('✅ YouTube account successfully authenticated', 'video');
-    fs.writeFileSync(TOKENS_PATH, '{}'); // placeholder
+    fs.writeFileSync(TOKENS_PATH, '{}');
     return '✅ YouTube account successfully authenticated';
   } catch (err) {
     writeLog(`❌ Authorization failed: ${err.message}`, 'video');
@@ -231,6 +233,9 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
 
   await startLiveChatMonitor(async (flaggedMessages) => {
     for (const msg of flaggedMessages) {
+      if (processedLiveMessages.has(msg.id)) continue;
+      processedLiveMessages.add(msg.id);
+
       if (msg.isLikelySpam) {
         await deleteComments([msg.id]);
         writeLog(`🛑 Deleted: ${msg.text}`, 'live');
@@ -239,14 +244,16 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
           author: msg.author,
           text: msg.text,
           isLikelySpam: true,
+          action: 'deleted',
         });
       } else {
-        writeLog(`⚠️ Suspect: ${msg.text}`, 'live');
+        writeLog(`⚠️ Allowed: ${msg.text}`, 'live');
         mainWindow.webContents.send('live-log', {
           id: msg.id,
           author: msg.author,
           text: msg.text,
           isLikelySpam: false,
+          action: 'allowed',
         });
       }
     }
@@ -255,6 +262,14 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
   writeLog('🟢 Live monitor started', 'live');
   mainWindow.webContents.send('live-log', '🟢 Live monitor started');
 });
+
+// Periodically clear old processed messages (memory optimization)
+setInterval(() => {
+  if (processedLiveMessages.size > 1000) {
+    processedLiveMessages.clear();
+    writeLog('♻️ Cleared live message cache', 'live');
+  }
+}, 60000);
 
 ipcMain.on('stop-live-monitor', () => {
   stopPolling();
@@ -281,7 +296,6 @@ ipcMain.on('save-config', (_event, newConfig) => {
   saveConfig(merged);
 });
 
-// === Theme Toggle ===
 ipcMain.on('toggle-theme', (_event, darkMode) => {
   const config = loadConfig();
   config.darkMode = darkMode;
@@ -289,7 +303,6 @@ ipcMain.on('toggle-theme', (_event, darkMode) => {
   mainWindow.webContents.send('theme-updated', darkMode);
 });
 
-// === Reload App ===
 ipcMain.on('reload-app', () => {
   app.relaunch();
   app.exit(0);
