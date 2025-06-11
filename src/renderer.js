@@ -93,6 +93,41 @@ async function loadStep3() {
   newVideoFilterInput = document.getElementById('addVideoFilterInput');
   newLiveFilterInput = document.getElementById('addLiveFilterInput');
 
+  const itemsPerPage = 10;
+  let currentPage = { high: 1, possible: 1 };
+  let fullResults = { high: [], possible: [], safeCount: 0 };
+
+  function renderPaginatedComments(category, boxId, page) {
+    const box = document.getElementById(boxId);
+    const comments = fullResults[category];
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageComments = comments.slice(start, end);
+    box.textContent = pageComments.join('\n') || 'None';
+    const totalPages = Math.ceil(comments.length / itemsPerPage);
+    document.getElementById(`${boxId}Pagination`).textContent = `Page ${page} of ${totalPages || 1}`;
+  }
+
+  function setupPaginationButtons(category, boxId) {
+    document.getElementById(`${boxId}Prev`).addEventListener('click', () => {
+      if (currentPage[category] > 1) {
+        currentPage[category]--;
+        renderPaginatedComments(category, boxId, currentPage[category]);
+      }
+    });
+
+    document.getElementById(`${boxId}Next`).addEventListener('click', () => {
+      const totalPages = Math.ceil(fullResults[category].length / itemsPerPage);
+      if (currentPage[category] < totalPages) {
+        currentPage[category]++;
+        renderPaginatedComments(category, boxId, currentPage[category]);
+      }
+    });
+  }
+
+  setupPaginationButtons('high', 'highLikely');
+  setupPaginationButtons('possible', 'possibleLikely');
+
   // Tabs
   document.querySelectorAll('.tab-button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -114,8 +149,14 @@ async function loadStep3() {
     appendLog('📥 Analyzing comments...');
     const result = await window.api.analyzeComments(link);
 
-    highLikelyBox.textContent = result.highLikely.join('\n') || 'None';
-    possibleLikelyBox.textContent = result.possibleLikely.join('\n') || 'None';
+    fullResults.high = result.highLikely;
+    fullResults.possible = result.possibleLikely;
+    fullResults.safeCount = result.safeCount;
+
+    currentPage = { high: 1, possible: 1 };
+
+    renderPaginatedComments('high', 'highLikely', 1);
+    renderPaginatedComments('possible', 'possibleLikely', 1);
     safeCountLine.textContent = `${result.safeCount} comments marked safe.`;
 
     result.logSteps.forEach(line => appendLog(`📝 ${line}`));
@@ -133,7 +174,6 @@ async function loadStep3() {
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
-
     window.open('reviewModal.html', 'Review Comments', `width=${width},height=${height},left=${left},top=${top}`);
   });
 
@@ -161,7 +201,6 @@ async function loadStep3() {
 
   ipcRenderer.on('live-log', (_e, payload) => {
     if (typeof payload === 'string') return appendLiveLog(payload);
-
     payload.forEach(msg => {
       const tag = msg.isLikelySpam ? '🚫' : '💬';
       appendLiveLog(`${tag} [${msg.author}]: ${msg.text}`);
@@ -172,6 +211,7 @@ async function loadStep3() {
       }
     });
   });
+}
 
   // Filters
   function loadFilter(file, target) {
