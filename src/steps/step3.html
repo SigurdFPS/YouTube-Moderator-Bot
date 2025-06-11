@@ -130,6 +130,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
+      margin-bottom: 10px;
     }
 
     .tabs {
@@ -230,14 +231,13 @@
           <div class="box" id="logBox">🔌 Bot ready.</div>
           <button id="reviewPossibleBtn" style="margin-top: 10px;">🔍 Review Comments</button>
         </div>
-        <div class="column">
-          <div class="box">
-            <div class="stats">
-              <span>🚩 Highly Likely: <span id="highCount">0</span></span>
-              <span>⚠️ Somewhat Likely: <span id="possibleCount">0</span></span>
-              <span>✅ Safe: <span id="safeCount">0</span></span>
-            </div>
-          </div>
+      </div>
+
+      <div class="box">
+        <div class="stats">
+          <span>🚩 Highly Likely: <span id="highCount">0</span></span>
+          <span>⚠️ Somewhat Likely: <span id="possibleCount">0</span></span>
+          <span>✅ Safe: <span id="safeCount">0</span></span>
         </div>
       </div>
 
