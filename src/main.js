@@ -31,19 +31,30 @@ function ensureAppDir() {
   if (!fs.existsSync(APPDATA_DIR)) fs.mkdirSync(APPDATA_DIR, { recursive: true });
 }
 
+function getDefaultConfig() {
+  return {
+    font: 'default',
+    mode: 'video',
+    '--title-font': "'Segoe UI', sans-serif",
+    '--paragraph-font': "'Segoe UI', sans-serif",
+    '--text': '#000000',
+    '--bg': '#ffffff',
+    '--accent': '#1d72f3',
+    '--btn-bg': '#1d72f3',
+    '--btn-text': '#ffffff',
+  };
+}
+
 function loadConfig() {
   ensureAppDir();
-  const defaultConfig = {
-    font: 'Segoe UI',
-    mode: 'video' // or 'live' — your app should reflect this toggle
-  };
+  const defaultConfig = getDefaultConfig();
 
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-      return { ...defaultConfig, ...JSON.parse(data) }; // merge with defaults
+      const userConfig = JSON.parse(data);
+      return { ...defaultConfig, ...userConfig };
     } else {
-      // Save default config to disk on first run
       saveConfig(defaultConfig);
       return defaultConfig;
     }
@@ -56,7 +67,8 @@ function loadConfig() {
 function saveConfig(config) {
   try {
     ensureAppDir();
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    const fullConfig = { ...getDefaultConfig(), ...config };
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2));
   } catch (err) {
     console.error('Failed to save config:', err);
   }
