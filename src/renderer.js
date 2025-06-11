@@ -94,40 +94,89 @@ async function loadStep3() {
   newVideoFilterInput = document.getElementById('addVideoFilterInput');
   newLiveFilterInput = document.getElementById('addLiveFilterInput');
 
-  const itemsPerPage = 10;
-  let currentPage = { high: 1, possible: 1 };
-  let fullResults = { high: [], possible: [], safeCount: 0 };
+  const selector = document.getElementById('fontSelector');
+  const toggle = document.getElementById('tabToggle');
+  const videoTab = document.getElementById('video');
+  const liveTab = document.getElementById('live');
 
-  function renderPaginatedComments(category, boxId, page) {
-    const box = document.getElementById(boxId);
-    const comments = fullResults[category];
-    const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const pageComments = comments.slice(start, end);
-    box.textContent = pageComments.join('\n') || 'None';
-    const totalPages = Math.ceil(comments.length / itemsPerPage);
-    document.getElementById(`${boxId}Pagination`).textContent = `Page ${page} of ${totalPages || 1}`;
+  const themes = {
+    default: { title: "'Segoe UI'", paragraph: "'Segoe UI'", text: "#000", bg: "#fff", accent: "#1d72f3" },
+    classic: { title: "'Oswald'", paragraph: "'EB Garamond'", text: "#1e1e1e", bg: "#faf8f5", accent: "#6a4e42" },
+    modern: { title: "'Roboto'", paragraph: "'Nunito'", text: "#222", bg: "#f6f8fa", accent: "#1976d2" },
+    elegant: { title: "'Spectral'", paragraph: "'Karla'", text: "#2c2c2c", bg: "#fbfbf7", accent: "#9a6b99" },
+    futuristic: { title: "'Abril Fatface'", paragraph: "'Poppins'", text: "#fff", bg: "#1a1a1a", accent: "#00ffff" },
+    minimalist: { title: "'Source Sans Pro'", paragraph: "'Source Serif Pro'", text: "#111", bg: "#fefefe", accent: "#4caf50" },
+  };
+
+  function applyTheme(key) {
+    const theme = themes[key] || themes.default;
+    document.body.style.setProperty('--title-font', theme.title);
+    document.body.style.setProperty('--paragraph-font', theme.paragraph);
+    document.body.style.setProperty('--text', theme.text);
+    document.body.style.setProperty('--bg', theme.bg);
+    document.body.style.setProperty('--accent', theme.accent);
+    document.body.style.setProperty('--btn-bg', theme.accent);
+    document.body.style.setProperty('--btn-text', theme.text === '#ffffff' ? '#000' : '#fff');
   }
 
-  function setupPaginationButtons(category, boxId) {
-    document.getElementById(`${boxId}Prev`).addEventListener('click', () => {
-      if (currentPage[category] > 1) {
-        currentPage[category]--;
-        renderPaginatedComments(category, boxId, currentPage[category]);
-      }
-    });
+  window.api.loadConfig().then(cfg => {
+    const selected = themes.hasOwnProperty(cfg?.font) ? cfg.font : 'default';
+    selector.value = selected;
+    applyTheme(selected);
+    const isLive = cfg?.mode === 'live';
+    toggle.checked = isLive;
+    videoTab.classList.toggle('active', !isLive);
+    liveTab.classList.toggle('active', isLive);
+  });
 
-    document.getElementById(`${boxId}Next`).addEventListener('click', () => {
-      const totalPages = Math.ceil(fullResults[category].length / itemsPerPage);
-      if (currentPage[category] < totalPages) {
-        currentPage[category]++;
-        renderPaginatedComments(category, boxId, currentPage[category]);
-      }
-    });
+  selector.addEventListener('change', () => {
+    const selected = selector.value;
+    applyTheme(selected);
+    window.api.saveConfig({ font: selected });
+  });
+
+  toggle.addEventListener('change', () => {
+    const isLive = toggle.checked;
+    videoTab.classList.toggle('active', !isLive);
+    liveTab.classList.toggle('active', isLive);
+    window.api.saveConfig({ mode: isLive ? 'live' : 'video' });
+  });
+
+  const commentsData = { high: [], possible: [], safe: [] };
+  const currentPages = { high: 1, possible: 1, safe: 1 };
+  const COMMENTS_PER_PAGE = 10;
+
+  function renderTab(tab) {
+    const box = document.getElementById(`${tab}CommentsBox`);
+    const pagination = document.getElementById(`${tab}Pagination`);
+    const page = currentPages[tab];
+    const start = (page - 1) * COMMENTS_PER_PAGE;
+    const items = commentsData[tab].slice(start, start + COMMENTS_PER_PAGE);
+    box.innerHTML = items.map(t => `<p>${t}</p>`).join('') || '<i>No comments</i>';
+
+    const totalPages = Math.ceil(commentsData[tab].length / COMMENTS_PER_PAGE);
+    pagination.innerHTML = '';
+    for (let i = 1; i <= totalPages; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = i;
+      btn.classList.toggle('active', i === page);
+      btn.addEventListener('click', () => {
+        currentPages[tab] = i;
+        renderTab(tab);
+      });
+      pagination.appendChild(btn);
+    }
   }
 
-  setupPaginationButtons('high', 'highLikely');
-  setupPaginationButtons('possible', 'possibleLikely');
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.comment-boxes > .tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      renderTab(btn.dataset.tab);
+    });
+  });
 
   // Tabs
   document.querySelectorAll('.tab-button').forEach(btn => {
