@@ -41,8 +41,8 @@ async function loadStep1() {
         window.location.href = '../steps/step2.html';
       }, 1000);
     } catch (err) {
-        console.error('Failed to write .env file:', err); // ⬅️ Add this
-        showToast('❌ Failed to save .env');
+      console.error('Failed to write .env file:', err);
+      showToast('❌ Failed to save .env');
     }
   });
 }
@@ -205,15 +205,21 @@ async function loadStep3() {
     if (typeof payload === 'string') return appendLiveLog(payload);
     payload.forEach(msg => {
       const tag = msg.isLikelySpam ? '🚫' : '💬';
-      appendLiveLog(`${tag} [${msg.author}]: ${msg.text}`);
+      const logEntry = `${tag} [${msg.author}]: ${msg.text}`;
+      if (activeMessageCache.has(logEntry)) return;
+
+      appendLiveLog(logEntry);
       if (msg.isLikelySpam) {
         window.api.deleteLiveComment(msg.id).then(() => {
           appendLiveLog(`🗑️ Deleted from ${msg.author}`);
+          activeMessageCache.delete(logEntry);
         });
+      } else {
+        appendLiveLog(`✅ Allowed from ${msg.author}`);
+        activeMessageCache.delete(logEntry);
       }
     });
   });
-}
 
   // Filters
   function loadFilter(file, target) {
