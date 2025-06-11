@@ -21,7 +21,13 @@ contextBridge.exposeInMainWorld('api', {
   toggleTheme: (darkMode) =>
     ipcRenderer.send('toggle-theme', darkMode),
 
+  // Optional listener for dynamic updates
+  onThemeUpdated: (callback) =>
+    ipcRenderer.on('theme-updated', (_, data) => callback(data)),
+
   // === Step Navigation ===
+  loadStep1: () =>
+    ipcRenderer.send('load-step-1'),
   loadStep2: () =>
     ipcRenderer.send('load-step-2'),
   loadStep3: () =>
@@ -66,7 +72,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('open-filter-file', mode),
 });
 
-// ✅ Optional: expose ipcRenderer for legacy-style usage in modal windows
+// ✅ Legacy access for modal windows
 contextBridge.exposeInMainWorld('ipcRenderer', {
   send: (...args) => ipcRenderer.send(...args),
   invoke: (...args) => ipcRenderer.invoke(...args),
