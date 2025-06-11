@@ -11,7 +11,7 @@ const configPath = path.join(__dirname, 'src/config/config.json');
 let step1, step2, step3;
 let clientIdInput, clientSecretInput;
 let authBtn, authStatus;
-let videoLinkInput, logBox, highLikelyBox, possibleLikelyBox, safeCountLine;
+let videoLinkInput, logBox;
 let deleteHighBtn, reviewPossibleBtn, deleteReviewedBtn;
 let startBtn, stopBtn, liveVideoIdInput, liveLogBox;
 let videoFilterBox, liveFilterBox, saveVideoFilterBtn, resetVideoFilterBtn, saveLiveFilterBtn, resetLiveFilterBtn;
@@ -19,6 +19,39 @@ let addVideoFilterBtn, addLiveFilterBtn, newVideoFilterInput, newLiveFilterInput
 let toast;
 
 let activeMessageCache = new Set();
+
+const commentsData = { high: [], possible: [], safe: [] };
+let activeTab = 'high';
+let currentPage = 1;
+const COMMENTS_PER_PAGE = 10;
+
+function renderComments() {
+  const commentBox = document.getElementById('commentBox');
+  const pagination = document.getElementById('commentPagination');
+  const list = commentsData[activeTab];
+  const start = (currentPage - 1) * COMMENTS_PER_PAGE;
+  const pageItems = list.slice(start, start + COMMENTS_PER_PAGE);
+
+  commentBox.innerHTML = pageItems.length
+    ? pageItems.map(c => `<div>${c}</div>`).join('')
+    : '<i>No comments in this category.</i>';
+
+  const totalPages = Math.ceil(list.length / COMMENTS_PER_PAGE);
+  pagination.innerHTML = '';
+
+  if (totalPages <= 1) return;
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    if (i === currentPage) btn.style.fontWeight = 'bold';
+    btn.addEventListener('click', () => {
+      currentPage = i;
+      renderComments();
+    });
+    pagination.appendChild(btn);
+  }
+}
 
 // ============ STEP 1 ============
 async function loadStep1() {
@@ -68,14 +101,9 @@ async function loadStep2() {
 
 // ============ STEP 3 ============
 async function loadStep3() {
-  step3 = document.getElementById('step3');
   toast = document.getElementById('toast');
-
   videoLinkInput = document.getElementById('videoLink');
   logBox = document.getElementById('logBox');
-  highLikelyBox = document.getElementById('highLikely');
-  possibleLikelyBox = document.getElementById('possibleLikely');
-  safeCountLine = document.getElementById('safeCount');
   deleteHighBtn = document.getElementById('deleteHighBtn');
   reviewPossibleBtn = document.getElementById('reviewPossibleBtn');
   deleteReviewedBtn = document.getElementById('deleteReviewedBtn');
@@ -142,53 +170,16 @@ async function loadStep3() {
     window.api.saveConfig({ mode: isLive ? 'live' : 'video' });
   });
 
-  const commentsData = { high: [], possible: [], safe: [] };
-  const currentPages = { high: 1, possible: 1, safe: 1 };
-  const COMMENTS_PER_PAGE = 10;
-
-  function renderTab(tab) {
-    const box = document.getElementById(`${tab}CommentsBox`);
-    const pagination = document.getElementById(`${tab}Pagination`);
-    const page = currentPages[tab];
-    const start = (page - 1) * COMMENTS_PER_PAGE;
-    const items = commentsData[tab].slice(start, start + COMMENTS_PER_PAGE);
-    box.innerHTML = items.map(t => `<p>${t}</p>`).join('') || '<i>No comments</i>';
-
-    const totalPages = Math.ceil(commentsData[tab].length / COMMENTS_PER_PAGE);
-    pagination.innerHTML = '';
-    for (let i = 1; i <= totalPages; i++) {
-      const btn = document.createElement('button');
-      btn.textContent = i;
-      btn.classList.toggle('active', i === page);
-      btn.addEventListener('click', () => {
-        currentPages[tab] = i;
-        renderTab(tab);
-      });
-      pagination.appendChild(btn);
-    }
-  }
-
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      document.querySelectorAll('.comment-boxes > .tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById(btn.dataset.tab).classList.add('active');
-      renderTab(btn.dataset.tab);
+      activeTab = btn.dataset.tab;
+      currentPage = 1;
+      renderComments();
     });
   });
-
-  // Tabs
-  document.querySelectorAll('.tab-button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.tab).classList.add('active');
-    });
-  });
-
-  // Analysis
+  
   videoLinkInput.addEventListener('change', async () => {
     const link = videoLinkInput.value.trim();
     if (!link.includes('youtube.com') && !link.includes('youtu.be')) {
@@ -199,24 +190,20 @@ async function loadStep3() {
     appendLog('📥 Analyzing comments...');
     const result = await window.api.analyzeComments(link);
 
-    fullResults.high = result.highLikely;
-    fullResults.possible = result.possibleLikely;
-    fullResults.safeCount = result.safeCount;
+    commentsData.high = result.highLikely;
+    commentsData.possible = result.possibleLikely;
+    commentsData.safe = result.safeComments ?? [];
 
-    currentPage = { high: 1, possible: 1 };
+    document.getElementById('highCount').textContent = result.highLikely.length;
+    document.getElementById('possibleCount').textContent = result.possibleLikely.length;
+    document.getElementById('safeCount').textContent = result.safeCount ?? commentsData.safe.length;
 
-    renderPaginatedComments('high', 'highLikely', 1);
-    renderPaginatedComments('possible', 'possibleLikely', 1);
-    safeCountLine.textContent = `${result.safeCount} comments marked safe.`;
+    activeTab = 'high';
+    currentPage = 1;
+    renderComments();
 
     result.logSteps.forEach(line => appendLog(`📝 ${line}`));
     showToast('✅ Analysis complete');
-  });
-
-  deleteHighBtn.addEventListener('click', async () => {
-    const msg = await window.api.deleteHighlyLikely();
-    appendLog(msg);
-    showToast(msg);
   });
 
   reviewPossibleBtn.addEventListener('click', () => {
@@ -225,12 +212,6 @@ async function loadStep3() {
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
     window.open('reviewModal.html', 'Review Comments', `width=${width},height=${height},left=${left},top=${top}`);
-  });
-
-  deleteReviewedBtn.addEventListener('click', async () => {
-    const msg = await window.api.deleteReviewedComments();
-    appendLog(msg);
-    showToast(msg);
   });
 
   // Live Monitor
@@ -274,12 +255,12 @@ async function loadStep3() {
   function loadFilter(file, target) {
     if (fs.existsSync(file)) {
       const content = JSON.parse(fs.readFileSync(file, 'utf-8'));
-      target.value = Array.isArray(content) ? content.join('\n') : '';
+      target.value = Array.isArray(content) ? content.join('\\n') : '';
     }
   }
 
   function saveFilter(file, source) {
-    const lines = source.value.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = source.value.split('\\n').map(l => l.trim()).filter(Boolean);
     fs.writeFileSync(file, JSON.stringify(lines, null, 2));
     showToast('✅ Filter saved');
   }
@@ -328,25 +309,8 @@ async function loadStep3() {
   loadFilter(liveFilterPath, liveFilterBox);
 }
 
-// ============ THEME LOADER ============
-function applyThemeFromConfig() {
-  if (!fs.existsSync(configPath)) return;
+// ============ INIT ============
 
-  try {
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    const root = document.documentElement;
-    if (config.theme === 'dark') root.setAttribute('data-theme', 'dark');
-    else root.setAttribute('data-theme', 'light');
-
-    if (config.fontFamily) {
-      root.style.setProperty('--font-family', config.fontFamily);
-    }
-  } catch (e) {
-    console.error('Failed to load theme from config:', e);
-  }
-}
-
-// ============ HELPERS ============
 function showToast(msg = '✔️ Task complete') {
   if (!toast) return;
   toast.textContent = msg;
@@ -356,18 +320,17 @@ function showToast(msg = '✔️ Task complete') {
 
 function appendLog(line) {
   if (!logBox) return;
-  logBox.textContent += `\n${line}`;
+  logBox.textContent += `\\n${line}`;
   logBox.scrollTop = logBox.scrollHeight;
 }
 
 function appendLiveLog(line) {
   if (!liveLogBox || activeMessageCache.has(line)) return;
   activeMessageCache.add(line);
-  liveLogBox.textContent += `\n${line}`;
+  liveLogBox.textContent += `\\n${line}`;
   liveLogBox.scrollTop = liveLogBox.scrollHeight;
 }
 
-// ============ INIT ============
 window.addEventListener('DOMContentLoaded', async () => {
   applyThemeFromConfig();
 
