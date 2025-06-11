@@ -195,6 +195,22 @@
       margin-top: 10px;
     }
 
+    .comment-tab {
+      display: none;
+    }
+
+    .comment-tab.active {
+      display: block;
+    }
+
+    .mode-content {
+      display: none;
+    }
+
+    .mode-content.active {
+      display: block;
+    }
+
     .pagination {
       margin-top: 10px;
     }
@@ -231,7 +247,8 @@
       </select>
     </header>
 
-    <div id="video" class="tab-content active">
+    <!-- Video Analysis Mode -->
+    <div id="video" class="mode-content active">
       <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
         <input id="videoLink" type="text" placeholder="YouTube video link" style="flex: 1;" />
         <button id="analyzeBtn">🔍 Analyze</button>
@@ -260,15 +277,15 @@
       </div>
 
       <div class="comment-boxes">
-        <div id="high" class="tab-content active">
+        <div id="high" class="comment-tab active">
           <div class="box" id="highCommentsBox"></div>
           <div class="pagination" id="highPagination"></div>
         </div>
-        <div id="possible" class="tab-content">
+        <div id="possible" class="comment-tab">
           <div class="box" id="possibleCommentsBox"></div>
           <div class="pagination" id="possiblePagination"></div>
         </div>
-        <div id="safe" class="tab-content">
+        <div id="safe" class="comment-tab">
           <div class="box" id="safeCommentsBox"></div>
           <div class="pagination" id="safePagination"></div>
         </div>
@@ -282,8 +299,8 @@
       </div>
     </div>
 
-    <div id="live" class="tab-content">
-      <!-- Existing Live Tab -->
+    <!-- Live Chat Mode -->
+    <div id="live" class="mode-content">
       <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
         <input id="liveVideoId" type="text" placeholder="Live video ID (optional)" style="flex: 1;" />
         <button id="startLiveMonitor">🚨 Start Live Monitor</button>
@@ -297,7 +314,6 @@
         <button id="openLiveFilterFile">📂 Open Filter File</button>
       </div>
     </div>
-
     <div class="toast" id="toast">✔️ Done</div>
   </div>
 
