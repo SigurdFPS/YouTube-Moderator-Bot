@@ -63,9 +63,9 @@
       try {
         const result = await window.api.saveEnvFile(clientId, clientSecret);
         if (result.success) {
-          status.textContent = '✅ Saved! Redirecting...';
+          status.textContent = '✅ Saved! Restarting app...';
           setTimeout(() => {
-            window.location.href = 'step2.html';
+            window.api.reloadApp(); // triggers app.relaunch() from main.js
           }, 1000);
         } else {
           status.textContent = '❌ Failed to save: ' + result.message;
