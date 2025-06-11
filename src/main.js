@@ -144,6 +144,11 @@ ipcMain.handle('save-env-file', async (_event, clientId, clientSecret) => {
   }
 });
 
+// Check to ensure the env file saved
+ipcMain.handle('envFileExists', async () => {
+  return fs.existsSync(ENV_PATH);
+});
+
 // === Step 2: YouTube OAuth ===
 ipcMain.handle('authorize-youtube', async () => {
   try {
