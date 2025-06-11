@@ -22,6 +22,7 @@ const ENV_PATH = path.join(APPDATA_DIR, '.env');
 const TOKENS_PATH = path.join(APPDATA_DIR, 'tokens.json');
 
 let mainWindow;
+let reviewWindow; // NEW: Modal reference
 let lastAnalyzed = {
   highlyLikely: [],
   possibleLikely: [],
@@ -87,6 +88,7 @@ function createWindow() {
     height: 560,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
     },
   });
 
@@ -210,7 +212,12 @@ ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   const deleted = await deleteComments(idsToDelete);
   writeLog(`🗑️ Manually deleted ${deleted.length}`, 'video');
 });
-ipcMain.handle('delete-reviewed-comments', () => '🧼 Use the review window to mark comments.');
+ipcMain.handle('delete-reviewed-comments', async () => {
+  if (!lastAnalyzed.possibleLikely.length) return '⚠️ No comments to review.';
+  const deleted = await deleteComments(lastAnalyzed.possibleLikely.map(c => c.id));
+  writeLog(`🧼 Deleted ${deleted.length} reviewed comments`, 'video');
+  return `🧼 Deleted ${deleted.length} reviewed comments`;
+});
 
 // === Live Chat Monitor ===
 let liveMonitorActive = false;
@@ -282,8 +289,29 @@ ipcMain.on('toggle-theme', (_event, darkMode) => {
   mainWindow.webContents.send('theme-updated', darkMode);
 });
 
-// === Reload After First-Time .env Write ===
+// === Reload App ===
 ipcMain.on('reload-app', () => {
   app.relaunch();
   app.exit(0);
+});
+
+// === REVIEW MODAL WINDOW ===
+ipcMain.on('open-review-modal', () => {
+  if (reviewWindow && !reviewWindow.isDestroyed()) {
+    reviewWindow.focus();
+    return;
+  }
+
+  reviewWindow = new BrowserWindow({
+    width: 650,
+    height: 700,
+    modal: true,
+    parent: mainWindow,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+    },
+  });
+
+  reviewWindow.loadFile(path.join(__dirname, 'reviewModal.html'));
 });
