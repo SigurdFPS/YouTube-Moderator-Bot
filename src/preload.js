@@ -15,23 +15,12 @@ contextBridge.exposeInMainWorld('api', {
   saveConfig: (config) =>
     ipcRenderer.send('save-config', config),
 
-  // === Theme Configuration ===
-  updateFontFamily: (font) =>
-    ipcRenderer.send('update-font-family', font),
+  // === Theme Mode Toggle ===
   toggleTheme: (darkMode) =>
     ipcRenderer.send('toggle-theme', darkMode),
 
-  // Optional listener for dynamic updates
   onThemeUpdated: (callback) =>
     ipcRenderer.on('theme-updated', (_, data) => callback(data)),
-
-  // === Step Navigation ===
-  loadStep1: () =>
-    ipcRenderer.send('load-step-1'),
-  loadStep2: () =>
-    ipcRenderer.send('load-step-2'),
-  loadStep3: () =>
-    ipcRenderer.send('load-step-3'),
 
   // === Comment Analysis ===
   analyzeComments: (videoLink) =>
@@ -55,10 +44,11 @@ contextBridge.exposeInMainWorld('api', {
   deleteLiveComment: (commentId) =>
     ipcRenderer.invoke('delete-live-comment', commentId),
 
-  onLiveChatMessage: (callback) => {
-    ipcRenderer.removeAllListeners('live-chat-message');
-    ipcRenderer.on('live-chat-message', (_, msg) => callback(msg));
+  onLiveLog: (callback) => {
+    ipcRenderer.removeAllListeners('live-log');
+    ipcRenderer.on('live-log', (_, msg) => callback(msg));
   },
+
   onLiveMonitorStopped: (callback) => {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
@@ -72,7 +62,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('open-filter-file', mode),
 });
 
-// ✅ Legacy access for modal windows
+// ✅ Legacy access for modal windows (e.g., reviewModal)
 contextBridge.exposeInMainWorld('ipcRenderer', {
   send: (...args) => ipcRenderer.send(...args),
   invoke: (...args) => ipcRenderer.invoke(...args),
