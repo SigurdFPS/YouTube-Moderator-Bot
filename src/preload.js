@@ -63,5 +63,14 @@ contextBridge.exposeInMainWorld('api', {
   resetFilters: (mode) =>
     ipcRenderer.invoke('reset-filters', mode),
   openFilterFile: (mode) =>
-    ipcRenderer.invoke('open-filter-file', mode), // e.g., 'video' or 'live'
+    ipcRenderer.invoke('open-filter-file', mode),
+});
+
+// ✅ Optional: expose ipcRenderer for legacy-style usage in modal windows
+contextBridge.exposeInMainWorld('ipcRenderer', {
+  send: (...args) => ipcRenderer.send(...args),
+  invoke: (...args) => ipcRenderer.invoke(...args),
+  on: (...args) => ipcRenderer.on(...args),
+  once: (...args) => ipcRenderer.once(...args),
+  removeAllListeners: (...args) => ipcRenderer.removeAllListeners(...args),
 });
