@@ -40,8 +40,29 @@
 
     h2 {
       text-align: center;
-      margin: 30px 0;
+      margin: 30px 0 10px;
       font-weight: 600;
+    }
+
+    .pagination {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .pagination button {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 14px;
+      margin: 0 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .pagination button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
     }
 
     form {
@@ -77,21 +98,21 @@
     }
 
     .choice {
-      display: flex;
-      gap: 30px;
-      align-items: center;
       margin-top: 10px;
     }
 
+    .choice input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 8px;
+    }
+
     label {
-      margin-left: 5px;
-      margin-right: 15px;
       font-size: 14px;
     }
 
-    button {
+    button.submit-btn {
       display: block;
-      margin: 40px auto 20px;
+      margin: 30px auto 10px;
       padding: 12px 28px;
       background-color: var(--accent);
       color: white;
@@ -102,7 +123,7 @@
       transition: background 0.2s;
     }
 
-    button:hover {
+    button.submit-btn:hover {
       background-color: #1976d2;
     }
 
@@ -127,46 +148,57 @@
   </style>
 </head>
 <body>
-  <h2>🧐 Review Possible Spam Comments</h2>
+  <h2>🧐 Review Somewhat Likely Comments</h2>
+  <div class="pagination">
+    <button id="prevPage" disabled>Previous</button>
+    <span id="pageInfo">Page 1</span>
+    <button id="nextPage">Next</button>
+  </div>
   <form id="reviewForm"></form>
-  <button type="button" onclick="submitReview()">Submit Reviewed Decisions</button>
+  <button type="button" class="submit-btn" onclick="submitReview()">Submit Reviewed Comments</button>
 
   <div id="toast">✔️ Comments marked for deletion</div>
 
   <script>
     const { ipcRenderer } = require('electron');
+    let comments = [];
+    let currentPage = 1;
+    const commentsPerPage = 10;
 
     async function applyThemeFromConfig() {
       const config = await ipcRenderer.invoke('load-config');
-      const theme = config?.theme || 'light';
+      const theme = config?.darkMode ? 'dark' : 'light';
       document.body.classList.remove('light', 'dark');
       document.body.classList.add(theme);
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      await applyThemeFromConfig();
-
-      const comments = await ipcRenderer.invoke('get-review-comments');
+    function renderComments() {
       const form = document.getElementById('reviewForm');
+      form.innerHTML = '';
 
-      comments.forEach((c, i) => {
+      const start = (currentPage - 1) * commentsPerPage;
+      const end = start + commentsPerPage;
+      const pageComments = comments.slice(start, end);
+
+      pageComments.forEach((c, i) => {
+        const idx = start + i;
         const div = document.createElement('div');
         div.className = 'comment-box';
         div.innerHTML = `
           <div class="comment-meta">👤 ${c.author || 'Unknown'} | 🕓 ${new Date(c.publishedAt).toLocaleString()}</div>
           <div class="comment-text">"${c.text}"</div>
           <div class="choice">
-            <input type="radio" name="review-${i}" value="keep" checked>
-            <label for="keep-${i}">Keep</label>
-            <input type="radio" name="review-${i}" value="delete">
-            <label for="delete-${i}">Delete</label>
+            <input type="checkbox" id="delete-${idx}" name="review-${idx}" value="${c.id}">
+            <label for="delete-${idx}">☑️ Mark for deletion</label>
           </div>
-          <input type="hidden" name="commentId-${i}" value="${c.id}">
-          <input type="hidden" name="reason-${i}" value="${c.reason}">
         `;
         form.appendChild(div);
       });
-    });
+
+      document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
+      document.getElementById('prevPage').disabled = currentPage === 1;
+      document.getElementById('nextPage').disabled = end >= comments.length;
+    }
 
     function showToast(message) {
       const toast = document.getElementById('toast');
@@ -177,20 +209,8 @@
 
     function submitReview() {
       const form = document.getElementById('reviewForm');
-      const data = [];
-
-      const inputs = Array.from(form.elements);
-      const reviewPairs = inputs.filter(el => el.name.startsWith('review-'));
-
-      reviewPairs.forEach((input) => {
-        if (input.checked && input.value === 'delete') {
-          const index = input.name.split('-')[1];
-          const idInput = form.querySelector(`input[name="commentId-${index}"]`);
-          if (idInput) {
-            data.push(idInput.value);
-          }
-        }
-      });
+      const checked = form.querySelectorAll('input[type="checkbox"]:checked');
+      const data = Array.from(checked).map(cb => cb.value);
 
       if (data.length === 0) {
         showToast('⚠️ No comments selected for deletion.');
@@ -201,6 +221,26 @@
       showToast(`✅ ${data.length} comment(s) marked for deletion`);
       setTimeout(() => window.close(), 1500);
     }
+
+    document.getElementById('prevPage').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderComments();
+      }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+      if ((currentPage * commentsPerPage) < comments.length) {
+        currentPage++;
+        renderComments();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await applyThemeFromConfig();
+      comments = await ipcRenderer.invoke('get-review-comments');
+      renderComments();
+    });
   </script>
 </body>
 </html>
