@@ -42,17 +42,16 @@ function getDefaultConfig() {
     '--accent': '#1d72f3',
     '--btn-bg': '#1d72f3',
     '--btn-text': '#ffffff',
+    darkMode: false,
   };
 }
 
 function loadConfig() {
   ensureAppDir();
   const defaultConfig = getDefaultConfig();
-
   try {
     if (fs.existsSync(CONFIG_PATH)) {
-      const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-      const userConfig = JSON.parse(data);
+      const userConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
       return { ...defaultConfig, ...userConfig };
     } else {
       saveConfig(defaultConfig);
@@ -107,7 +106,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// === Step Navigation ===
+// === Navigation ===
 ipcMain.on('load-step-2', () => {
   mainWindow.loadFile(path.join(__dirname, '/steps/step2.html'));
 });
@@ -137,7 +136,7 @@ ipcMain.handle('authorize-youtube', async () => {
   try {
     await authorize();
     writeLog('✅ YouTube account successfully authenticated', 'video');
-    fs.writeFileSync(TOKENS_PATH, '{}'); // Auth marker
+    fs.writeFileSync(TOKENS_PATH, '{}'); // placeholder
     return '✅ YouTube account successfully authenticated';
   } catch (err) {
     writeLog(`❌ Authorization failed: ${err.message}`, 'video');
@@ -170,8 +169,7 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     ];
 
     writeGroup(summary, 'video');
-    logSteps.push(...summary);
-    logSteps.push('🧠 Report being generated...');
+    logSteps.push(...summary, '🧠 Report being generated...');
 
     const reportFile = generateReport({
       videoLink,
@@ -191,34 +189,28 @@ ipcMain.handle('analyze-comments', async (_event, videoLink) => {
     };
   } catch (err) {
     writeLog(`❌ Error: ${err.message}`, 'video');
-    logSteps.push(`❌ Error: ${err.message}`);
     return {
       highLikely: [],
       possibleLikely: [],
       safeCount: 0,
-      logSteps,
+      logSteps: [`❌ Error: ${err.message}`],
     };
   }
 });
 
-// === Deletion Actions ===
+// === Comment Deletion ===
 ipcMain.handle('delete-highly-likely', async () => {
   if (!lastAnalyzed.highlyLikely.length) return '⚠️ Nothing to delete.';
   const deleted = await deleteComments(lastAnalyzed.highlyLikely.map(c => c.id));
   writeLog(`🧹 Deleted ${deleted.length}`, 'video');
   return `🧹 Deleted ${deleted.length}`;
 });
-
 ipcMain.handle('get-review-comments', () => lastAnalyzed.possibleLikely);
-
 ipcMain.on('submit-reviewed-comments', async (_event, idsToDelete) => {
   const deleted = await deleteComments(idsToDelete);
   writeLog(`🗑️ Manually deleted ${deleted.length}`, 'video');
 });
-
-ipcMain.handle('delete-reviewed-comments', () => {
-  return '🧼 Use the review window to mark comments.';
-});
+ipcMain.handle('delete-reviewed-comments', () => '🧼 Use the review window to mark comments.');
 
 // === Live Chat Monitor ===
 let liveMonitorActive = false;
@@ -228,7 +220,6 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
     mainWindow.webContents.send('live-log', '⚠️ Already monitoring');
     return;
   }
-
   liveMonitorActive = true;
 
   await startLiveChatMonitor(async (flaggedMessages) => {
@@ -275,7 +266,7 @@ ipcMain.handle('delete-live-comment', async (_event, commentId) => {
   }
 });
 
-// === Config Persistence ===
+// === Config ===
 ipcMain.handle('load-config', () => loadConfig());
 ipcMain.on('save-config', (_event, newConfig) => {
   const current = loadConfig();
@@ -283,7 +274,15 @@ ipcMain.on('save-config', (_event, newConfig) => {
   saveConfig(merged);
 });
 
-// === App Relaunch for Fresh .env Load ===
+// === Theme Toggle ===
+ipcMain.on('toggle-theme', (_event, darkMode) => {
+  const config = loadConfig();
+  config.darkMode = darkMode;
+  saveConfig(config);
+  mainWindow.webContents.send('theme-updated', darkMode);
+});
+
+// === Reload After First-Time .env Write ===
 ipcMain.on('reload-app', () => {
   app.relaunch();
   app.exit(0);
