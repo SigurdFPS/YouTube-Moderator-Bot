@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>YouTube Cleaner</title>
+  <title>YouTube Comment Cleaner</title>
   <link href="https://fonts.googleapis.com/css2?family=Oswald&family=EB+Garamond&family=Roboto&family=Nunito&family=Spectral&family=Karla&family=Abril+Fatface&family=Poppins&family=Source+Sans+Pro&family=Source+Serif+Pro&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -23,10 +23,6 @@
       background: var(--bg);
       color: var(--text);
       font-family: var(--paragraph-font);
-    }
-
-    h1, h2, h3, .switch-label, .stats span {
-      font-family: var(--title-font);
     }
 
     .container {
@@ -97,14 +93,10 @@
       transform: translateX(26px);
     }
 
-    select#fontSelector {
-      padding: 10px;
-      font-size: 14px;
-    }
-
     .row {
       display: flex;
       gap: 20px;
+      margin-bottom: 10px;
     }
 
     .column {
@@ -113,7 +105,7 @@
       flex-direction: column;
     }
 
-    input, button {
+    input, button, select {
       padding: 10px;
       font-size: 16px;
     }
@@ -132,17 +124,42 @@
       height: 200px;
       white-space: pre-wrap;
       overflow-y: auto;
-      flex: 1;
     }
 
     .stats {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .stats span {
+    .tabs {
+      display: flex;
+      margin-top: 20px;
+      gap: 10px;
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
       font-weight: bold;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .pagination {
+      margin-top: 10px;
+    }
+
+    .pagination button {
+      margin: 0 4px;
+      padding: 5px 10px;
+      cursor: pointer;
     }
 
     .filter-controls {
@@ -171,58 +188,12 @@
       opacity: 1;
     }
 
-    .tabs {
-      margin-top: 20px;
-      display: flex;
-      gap: 10px;
-    }
-
-    .tab-btn {
-      padding: 8px 16px;
-      border: 1px solid var(--border);
-      background: var(--btn-bg);
-      color: var(--btn-text);
-      cursor: pointer;
-    }
-
-    .tab-btn.active {
-      font-weight: bold;
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .comment-boxes {
-      margin-top: 10px;
-    }
-
-    .comment-tab {
-      display: none;
-    }
-
-    .comment-tab.active {
-      display: block;
-    }
-
     .mode-content {
       display: none;
     }
 
     .mode-content.active {
       display: block;
-    }
-
-    .pagination {
-      margin-top: 10px;
-    }
-
-    .pagination button {
-      margin: 0 4px;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-
-    .pagination button.active {
-      font-weight: bold;
     }
   </style>
 </head>
@@ -247,9 +218,9 @@
       </select>
     </header>
 
-    <!-- Video Analysis Mode -->
+    <!-- Video Mode -->
     <div id="video" class="mode-content active">
-      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+      <div class="row">
         <input id="videoLink" type="text" placeholder="YouTube video link" style="flex: 1;" />
         <button id="analyzeBtn">🔍 Analyze</button>
       </div>
@@ -257,6 +228,7 @@
       <div class="row">
         <div class="column">
           <div class="box" id="logBox">🔌 Bot ready.</div>
+          <button id="reviewPossibleBtn" style="margin-top: 10px;">🔍 Review Comments</button>
         </div>
         <div class="column">
           <div class="box">
@@ -266,30 +238,18 @@
               <span>✅ Safe: <span id="safeCount">0</span></span>
             </div>
           </div>
-          <button id="reviewPossibleBtn" style="margin-top: 10px; width: 100%;">🔍 Review Comments</button>
         </div>
       </div>
 
+      <!-- Unified Comment Box with Tabs -->
       <div class="tabs">
         <button class="tab-btn active" data-tab="high">🚩 Highly Likely</button>
         <button class="tab-btn" data-tab="possible">⚠️ Somewhat Likely</button>
         <button class="tab-btn" data-tab="safe">✅ Safe</button>
       </div>
 
-      <div class="comment-boxes">
-        <div id="high" class="comment-tab active">
-          <div class="box" id="highCommentsBox"></div>
-          <div class="pagination" id="highPagination"></div>
-        </div>
-        <div id="possible" class="comment-tab">
-          <div class="box" id="possibleCommentsBox"></div>
-          <div class="pagination" id="possiblePagination"></div>
-        </div>
-        <div id="safe" class="comment-tab">
-          <div class="box" id="safeCommentsBox"></div>
-          <div class="pagination" id="safePagination"></div>
-        </div>
-      </div>
+      <div class="box" id="commentBox"></div>
+      <div class="pagination" id="commentPagination"></div>
 
       <div class="filter-controls">
         <input id="addVideoFilterInput" type="text" placeholder="New video filter phrase" />
@@ -299,14 +259,16 @@
       </div>
     </div>
 
-    <!-- Live Chat Mode -->
+    <!-- Live Mode -->
     <div id="live" class="mode-content">
-      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+      <div class="row">
         <input id="liveVideoId" type="text" placeholder="Live video ID (optional)" style="flex: 1;" />
         <button id="startLiveMonitor">🚨 Start Live Monitor</button>
         <button id="stopLiveMonitor" style="display: none;">🛑 Stop Monitor</button>
       </div>
+
       <div class="box" id="liveLogBox">🟢 Waiting for live chat...</div>
+
       <div class="filter-controls">
         <input id="addLiveFilterInput" type="text" placeholder="New live filter phrase" />
         <button id="addLiveFilter">➕ Add & Save</button>
@@ -314,96 +276,9 @@
         <button id="openLiveFilterFile">📂 Open Filter File</button>
       </div>
     </div>
+
     <div class="toast" id="toast">✔️ Done</div>
   </div>
-
-  <script>
-    // THEMING + MODE TOGGLE
-    const selector = document.getElementById('fontSelector');
-    const toggle = document.getElementById('tabToggle');
-    const videoTab = document.getElementById('video');
-    const liveTab = document.getElementById('live');
-
-    const themes = {
-      default: { title: "'Segoe UI'", paragraph: "'Segoe UI'", text: "#000", bg: "#fff", accent: "#1d72f3" },
-      classic: { title: "'Oswald'", paragraph: "'EB Garamond'", text: "#1e1e1e", bg: "#faf8f5", accent: "#6a4e42" },
-      modern: { title: "'Roboto'", paragraph: "'Nunito'", text: "#222", bg: "#f6f8fa", accent: "#1976d2" },
-      elegant: { title: "'Spectral'", paragraph: "'Karla'", text: "#2c2c2c", bg: "#fbfbf7", accent: "#9a6b99" },
-      futuristic: { title: "'Abril Fatface'", paragraph: "'Poppins'", text: "#fff", bg: "#1a1a1a", accent: "#00ffff" },
-      minimalist: { title: "'Source Sans Pro'", paragraph: "'Source Serif Pro'", text: "#111", bg: "#fefefe", accent: "#4caf50" },
-    };
-
-    function applyTheme(key) {
-      const theme = themes[key] || themes.default;
-      document.body.style.setProperty('--title-font', theme.title);
-      document.body.style.setProperty('--paragraph-font', theme.paragraph);
-      document.body.style.setProperty('--text', theme.text);
-      document.body.style.setProperty('--bg', theme.bg);
-      document.body.style.setProperty('--accent', theme.accent);
-      document.body.style.setProperty('--btn-bg', theme.accent);
-      document.body.style.setProperty('--btn-text', theme.text === '#ffffff' ? '#000' : '#fff');
-    }
-
-    window.api.loadConfig().then(cfg => {
-      const selected = themes.hasOwnProperty(cfg?.font) ? cfg.font : 'default';
-      selector.value = selected;
-      applyTheme(selected);
-      const isLive = cfg?.mode === 'live';
-      toggle.checked = isLive;
-      videoTab.classList.toggle('active', !isLive);
-      liveTab.classList.toggle('active', isLive);
-    });
-
-    selector.addEventListener('change', () => {
-      const selected = selector.value;
-      applyTheme(selected);
-      window.api.saveConfig({ font: selected });
-    });
-
-    toggle.addEventListener('change', () => {
-      const isLive = toggle.checked;
-      videoTab.classList.toggle('active', !isLive);
-      liveTab.classList.toggle('active', isLive);
-      window.api.saveConfig({ mode: isLive ? 'live' : 'video' });
-    });
-
-    // TABBED COMMENT DISPLAY + PAGINATION
-    const commentsData = { high: [], possible: [], safe: [] };
-    const currentPages = { high: 1, possible: 1, safe: 1 };
-    const COMMENTS_PER_PAGE = 10;
-
-    function renderTab(tab) {
-      const box = document.getElementById(`${tab}CommentsBox`);
-      const pagination = document.getElementById(`${tab}Pagination`);
-      const page = currentPages[tab];
-      const start = (page - 1) * COMMENTS_PER_PAGE;
-      const items = commentsData[tab].slice(start, start + COMMENTS_PER_PAGE);
-      box.innerHTML = items.map(t => `<p>${t}</p>`).join('') || '<i>No comments</i>';
-
-      const totalPages = Math.ceil(commentsData[tab].length / COMMENTS_PER_PAGE);
-      pagination.innerHTML = '';
-      for (let i = 1; i <= totalPages; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.classList.toggle('active', i === page);
-        btn.addEventListener('click', () => {
-          currentPages[tab] = i;
-          renderTab(tab);
-        });
-        pagination.appendChild(btn);
-      }
-    }
-
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.comment-boxes > .tab-content').forEach(c => c.classList.remove('active'));
-        document.getElementById(btn.dataset.tab).classList.add('active');
-        renderTab(btn.dataset.tab);
-      });
-    });
-  </script>
 
   <script src="../renderer.js"></script>
 </body>
