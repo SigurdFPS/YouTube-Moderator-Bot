@@ -201,6 +201,12 @@
 
   <script>
     const selector = document.getElementById('fontSelector');
+    window.api.loadConfig().then(cfg => {
+      if (cfg.font) {
+        document.body.style.fontFamily = cfg.font;
+        selector.value = cfg.font;
+      }
+    });
     selector.addEventListener('change', () => {
       document.body.style.fontFamily = selector.value;
       window.api.saveConfig({ font: selector.value });
