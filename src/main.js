@@ -32,15 +32,25 @@ function ensureAppDir() {
 }
 
 function loadConfig() {
+  ensureAppDir();
+  const defaultConfig = {
+    font: 'Segoe UI',
+    mode: 'video' // or 'live' — your app should reflect this toggle
+  };
+
   try {
-    ensureAppDir();
     if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+      const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
+      return { ...defaultConfig, ...JSON.parse(data) }; // merge with defaults
+    } else {
+      // Save default config to disk on first run
+      saveConfig(defaultConfig);
+      return defaultConfig;
     }
   } catch (err) {
     console.error('Failed to load config:', err);
+    return defaultConfig;
   }
-  return { theme: 'default' };
 }
 
 function saveConfig(config) {
