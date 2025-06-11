@@ -4,214 +4,227 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Step 3 – YouTube Comment Cleaner</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Tahoma&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Tahoma&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Quattrocento&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fanwood+Text&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fjalla+One&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --background: #ffffff;
-      --text: #000000;
-      --button-bg: #1d72f3;
-      --button-text: #fff;
+      --bg: #fff;
+      --text: #000;
+      --btn-bg: #1d72f3;
+      --btn-text: #fff;
       --input-bg: #f0f0f0;
-      --input-text: #000;
+      --border: #ccc;
     }
 
     body {
       margin: 0;
-      background: var(--background);
+      background: var(--bg);
       color: var(--text);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
     }
 
     .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 20px;
       padding: 30px;
-      max-width: 1000px;
-      margin: 0 auto;
+      max-width: 1200px;
+      margin: auto;
     }
 
-    input, textarea {
-      padding: 10px;
-      border: 1px solid #333;
-      width: 100%;
-      margin-top: 10px;
-      background: var(--input-bg);
-      color: var(--input-text);
-    }
-
-    textarea {
-      resize: vertical;
-      font-family: monospace;
-    }
-
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background: var(--button-bg);
-      border: none;
-      color: var(--button-text);
-      cursor: pointer;
-    }
-
-    .tabs {
+    header {
+      grid-column: 1 / -1;
       display: flex;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 20px;
     }
 
-    .tab-button {
+    .tabs button {
       padding: 10px 20px;
+      margin-right: 10px;
       border: none;
       cursor: pointer;
       background: #e0e0e0;
       color: #333;
     }
 
-    .tab-button.active {
-      background: #1d72f3;
-      color: white;
+    .tabs button.active {
+      background: var(--btn-bg);
+      color: var(--btn-text);
     }
 
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .section {
-      margin-bottom: 20px;
-    }
-
-    #logBox, #highLikely, #possibleLikely, #safeCount, #liveLogBox {
+    select#fontSelect {
       padding: 10px;
-      white-space: pre-wrap;
-      height: 150px;
-      overflow-y: auto;
+      font-size: 14px;
+      min-width: 200px;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .box {
       background: var(--input-bg);
-      color: var(--input-text);
-      border: 1px solid #aaa;
+      border: 1px solid var(--border);
+      padding: 10px;
+      min-height: 150px;
+      white-space: pre-wrap;
+      overflow-y: auto;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      cursor: pointer;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .filter-row input {
+      flex: 1;
+    }
+
+    .filter-row button {
+      flex-shrink: 0;
+    }
+
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stats span {
+      font-weight: bold;
     }
 
     .toast {
       position: fixed;
       bottom: 15px;
       left: 15px;
-      background: #2a2a2a;
+      background: #333;
       color: #fff;
       padding: 10px 15px;
       border-radius: 5px;
       opacity: 0;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.3s;
     }
 
     .toast.show {
       opacity: 1;
     }
-
-    .live-controls {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    #stopLiveMonitor {
-      background: #c62828;
-      display: none;
-    }
-
-    .filter-controls {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-
-    .filter-controls input {
-      flex-grow: 1;
-      min-width: 200px;
-    }
-
-    h4 {
-      margin-bottom: 6px;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="tabs">
-      <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
-      <button class="tab-button" data-tab="live">🔴 Live Mode</button>
-    </div>
-
-    <!-- Video Analysis Tab -->
-    <div id="video" class="tab-content active">
-      <label for="videoLink">YouTube Video Link:</label>
-      <input type="text" id="videoLink" placeholder="Paste YouTube Video Link Here" />
-      <div id="logBox">🔌 Bot ready.</div>
-
-      <div class="section">
-        <h4>Highly Likely Comments</h4>
-        <div id="highLikely"></div>
-      </div>
-
-      <div class="section">
-        <h4>Possible Comments</h4>
-        <div id="possibleLikely"></div>
-      </div>
-
-      <div class="section">
-        <h4>Safe Comments</h4>
-        <div id="safeCount">0 comments marked safe.</div>
-      </div>
-
-      <button id="deleteHighBtn">🧹 Delete Highly Likely</button>
-      <button id="reviewPossibleBtn">🔍 Review Possible</button>
-      <button id="deleteReviewedBtn">🗑️ Delete Reviewed Comments</button>
-
-      <div class="section">
-        <h4>Video Spam Filter List</h4>
-        <textarea id="videoFilterBox" rows="6" placeholder="Example:\nthanks\nbeen watching\ncool video\n..."></textarea>
-        <div class="filter-controls">
-          <input type="text" id="addVideoFilterInput" placeholder="Add new video filter phrase..." />
-          <button id="addVideoFilter">➕ Add Filter</button>
-          <button id="saveVideoFilter">💾 Save Filter</button>
-          <button id="resetVideoFilter">♻️ Reset to Defaults</button>
+    <header class="full-width">
+      <div style="display: flex; gap: 10px;">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
+          <button class="tab-button" data-tab="live">🔴 Live Mode</button>
         </div>
       </div>
+      <div>
+        <select id="fontSelect">
+          <option value="Segoe UI">Segoe UI (Default)</option>
+          <option value="Tahoma">Tahoma</option>
+          <option value="Quattrocento">Quattrocento</option>
+          <option value="Fanwood Text">Fanwood Text</option>
+          <option value="Oswald">Oswald</option>
+          <option value="Fjalla One">Fjalla One</option>
+          <option value="Libre Baskerville">Libre Baskerville</option>
+          <option value="EB Garamond">EB Garamond</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Video Analysis Column -->
+    <div id="video" class="tab-content">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input id="videoLink" type="text" placeholder="YouTube video link" />
+        <button id="analyzeBtn">🔍 Analyze</button>
+      </div>
+      <div class="box" id="logBox">🔌 Bot ready.</div>
+      <button id="reviewPossibleBtn" class="full-width">🔍 Review Comments</button>
     </div>
 
-    <!-- Live Mode Tab -->
-    <div id="live" class="tab-content">
-      <label for="liveVideoId">Live Video ID:</label>
-      <input id="liveVideoId" type="text" placeholder="Enter Live Video ID" />
-      <div class="live-controls">
+    <!-- Stats & Filter Column -->
+    <div id="video-metrics">
+      <div class="box">
+        <div class="stats">
+          <span>🚩 Highly Likely: <span id="highCount">0</span></span>
+          <span>⚠️ Somewhat Likely: <span id="possibleCount">0</span></span>
+          <span>✅ Safe: <span id="safeCount">0</span></span>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <input id="addVideoFilterInput" type="text" placeholder="New video filter phrase" />
+        <button id="addVideoFilter">➕ Add & Save</button>
+      </div>
+      <div class="filter-row">
+        <button id="resetVideoFilter">♻️ Reset Defaults</button>
+        <button id="openVideoFilterFile">📂 Open Filter File</button>
+      </div>
+    </div>
+
+    <!-- Live Mode Column -->
+    <div id="live" class="tab-content" style="display:none;">
+      <input id="liveVideoId" type="text" placeholder="Live video ID (optional)" />
+      <div class="filter-row">
         <button id="startLiveMonitor">🚨 Start Live Monitor</button>
-        <button id="stopLiveMonitor">🛑 Stop Monitoring</button>
+        <button id="stopLiveMonitor">🛑 Stop Monitor</button>
       </div>
+      <div class="box" id="liveLogBox">🟢 Live chat logs...</div>
 
-      <div class="section">
-        <h4>Live Chat Log</h4>
-        <div id="liveLogBox">🟢 Waiting for chat activity...</div>
+      <div class="filter-row" style="margin-top: 20px;">
+        <input id="addLiveFilterInput" type="text" placeholder="New live filter phrase" />
+        <button id="addLiveFilter">➕ Add & Save</button>
       </div>
-
-      <div class="section">
-        <h4>Live Chat Spam Filter List</h4>
-        <textarea id="liveFilterBox" rows="6" placeholder="Example:\nsub to me\nclick my profile\nfree gift\n..."></textarea>
-        <div class="filter-controls">
-          <input type="text" id="addLiveFilterInput" placeholder="Add new live filter phrase..." />
-          <button id="addLiveFilter">➕ Add Filter</button>
-          <button id="saveLiveFilter">💾 Save Filter</button>
-          <button id="resetLiveFilter">♻️ Reset to Defaults</button>
-        </div>
+      <div class="filter-row">
+        <button id="resetLiveFilter">♻️ Reset Defaults</button>
+        <button id="openLiveFilterFile">📂 Open Filter File</button>
       </div>
     </div>
 
-    <div class="toast" id="toast">✔️ Task Complete</div>
+    <div class="toast" id="toast">✔️ Done</div>
   </div>
 
-  <script src="renderer.js"></script>
+  <script src="../renderer.js"></script>
+  <script>
+    document.getElementById('fontSelect').addEventListener('change', (e) => {
+      document.body.style.fontFamily = e.target.value;
+    });
+
+    const tabs = document.querySelectorAll('.tab-button');
+    const contents = document.querySelectorAll('.tab-content');
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(b => b.classList.remove('active'));
+        contents.forEach(c => c.style.display = 'none');
+        btn.classList.add('active');
+        const tab = btn.getAttribute('data-tab');
+        document.getElementById(tab).style.display = 'block';
+      });
+    });
+  </script>
 </body>
 </html>
