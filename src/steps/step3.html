@@ -35,22 +35,59 @@
       margin-bottom: 20px;
     }
 
-    .tabs {
+    .switch-wrapper {
       display: flex;
+      align-items: center;
       gap: 10px;
     }
 
-    .tabs button {
-      padding: 10px 20px;
-      border: none;
-      cursor: pointer;
-      background: #e0e0e0;
-      color: #333;
+    .switch-label {
+      font-weight: bold;
     }
 
-    .tabs button.active {
-      background: var(--btn-bg);
-      color: var(--btn-text);
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    .switch input:checked + .slider {
+      background-color: #1d72f3;
+    }
+
+    .switch input:checked + .slider:before {
+      transform: translateX(26px);
     }
 
     select#fontSelector {
@@ -65,6 +102,8 @@
 
     .column {
       flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     input, button {
@@ -83,9 +122,10 @@
       background: var(--input-bg);
       border: 1px solid var(--border);
       padding: 10px;
-      min-height: 150px;
+      height: 200px;
       white-space: pre-wrap;
       overflow-y: auto;
+      flex: 1;
     }
 
     .stats {
@@ -136,9 +176,13 @@
 <body>
   <div class="container">
     <header>
-      <div class="tabs">
-        <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
-        <button class="tab-button" data-tab="live">🔴 Live Mode</button>
+      <div class="switch-wrapper">
+        <span class="switch-label">🎬 Video</span>
+        <label class="switch">
+          <input type="checkbox" id="tabToggle">
+          <span class="slider round"></span>
+        </label>
+        <span class="switch-label">🔴 Live</span>
       </div>
       <select id="fontSelector">
         <option value="Segoe UI">Segoe UI (Default)</option>
@@ -186,41 +230,53 @@
         <input id="liveVideoId" type="text" placeholder="Live video ID (optional)" style="flex: 1;" />
         <button id="startLiveMonitor">🚨 Start Live Monitor</button>
         <button id="stopLiveMonitor" style="display: none;">🛑 Stop Monitor</button>
-    </div>
+      </div>
 
-    <div class="box" id="liveLogBox">🟢 Waiting for live chat...</div>
+      <div class="box" id="liveLogBox">🟢 Waiting for live chat...</div>
 
-    <div class="filter-controls">
-      <input id="addLiveFilterInput" type="text" placeholder="New live filter phrase" />
+      <div class="filter-controls">
+        <input id="addLiveFilterInput" type="text" placeholder="New live filter phrase" />
         <button id="addLiveFilter">➕ Add & Save</button>
         <button id="resetLiveFilter">♻️ Reset Defaults</button>
         <button id="openLiveFilterFile">📂 Open Filter File</button>
+      </div>
     </div>
+
     <div class="toast" id="toast">✔️ Done</div>
   </div>
 
-  <script>
-    const selector = document.getElementById('fontSelector');
-    window.api.loadConfig().then(cfg => {
-      if (cfg.font) {
-        document.body.style.fontFamily = cfg.font;
-        selector.value = cfg.font;
-      }
-    });
-    selector.addEventListener('change', () => {
-      document.body.style.fontFamily = selector.value;
-      window.api.saveConfig({ font: selector.value });
-    });
+<script>
+  const selector = document.getElementById('fontSelector');
+  const toggle = document.getElementById('tabToggle');
+  const videoTab = document.getElementById('video');
+  const liveTab = document.getElementById('live');
 
-    document.querySelectorAll('.tab-button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
-      });
-    });
-  </script>
+  window.api.loadConfig().then(cfg => {
+    // Apply saved font
+    if (cfg.font) {
+      document.body.style.fontFamily = cfg.font;
+      selector.value = cfg.font;
+    }
+
+    // Apply saved mode (video or live)
+    const isLive = cfg.mode === 'live';
+    toggle.checked = isLive;
+    videoTab.classList.toggle('active', !isLive);
+    liveTab.classList.toggle('active', isLive);
+  });
+
+  selector.addEventListener('change', () => {
+    document.body.style.fontFamily = selector.value;
+    window.api.saveConfig({ font: selector.value });
+  });
+
+  toggle.addEventListener('change', () => {
+    const isLive = toggle.checked;
+    videoTab.classList.toggle('active', !isLive);
+    liveTab.classList.toggle('active', isLive);
+    window.api.saveConfig({ mode: isLive ? 'live' : 'video' });
+  });
+</script>
 
   <script src="../renderer.js"></script>
 </body>
