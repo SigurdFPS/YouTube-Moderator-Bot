@@ -46,6 +46,19 @@ async function startLiveChatListener(liveChatIdOverride) {
 
   nextPageToken = res.data.nextPageToken;
 
+  if (!res.data.items || res.data.items.length === 0) {
+    return {
+      liveChatId,
+      messages: [],
+      stats: {
+        highLikely: [],
+        possibleLikely: [],
+        safeCount: 0,
+        full: 0,
+      },
+    };
+  }
+
   const rawMessages = res.data.items.map(item => ({
     id: item.id,
     text: item.snippet.displayMessage,
@@ -54,7 +67,6 @@ async function startLiveChatListener(liveChatIdOverride) {
   }));
 
   const analysis = analyzeComments(rawMessages, 'live');
-
   const highlyLikelyIds = new Set(analysis.highLikely.map(m => m.id));
 
   const enrichedMessages = rawMessages.map(msg => ({
@@ -80,23 +92,32 @@ async function startLiveChatMonitor(onSpamDetected = () => {}) {
 
     polling = true;
     interval = setInterval(async () => {
-      const { messages, stats } = await startLiveChatListener(liveChatId);
+      try {
+        const { messages, stats } = await startLiveChatListener(liveChatId);
 
-      // Surface stats to UI
-      if (mainWindowRef) {
-        mainWindowRef.webContents.send(
-          'live-log',
-          `📊 Analyzed ${stats.full} messages — 🛑 High: ${stats.highLikely.length}, ⚠️ Possible: ${stats.possibleLikely.length}, ✅ Safe: ${stats.safeCount}`
-        );
-      }
+        // Emit stats
+        if (mainWindowRef) {
+          mainWindowRef.webContents.send(
+            'live-log',
+            `📊 Analyzed ${stats.full} messages — 🛑 High: ${stats.highLikely.length}, ⚠️ Possible: ${stats.possibleLikely.length}, ✅ Safe: ${stats.safeCount}`
+          );
+        }
 
-      const flagged = messages.filter(m => m.isLikelySpam);
-      if (flagged.length > 0) {
-        onSpamDetected(flagged);
+        const flagged = messages.filter(m => m.isLikelySpam);
+        if (flagged.length > 0) {
+          onSpamDetected(flagged);
+        }
+      } catch (pollError) {
+        console.error('❌ Polling error:', pollError.message);
+        writeLog(`❌ Polling error: ${pollError.message}`, 'live');
+        if (mainWindowRef) {
+          mainWindowRef.webContents.send('live-log', `❌ Polling error: ${pollError.message}`);
+        }
       }
     }, 5000);
   } catch (err) {
     console.error('❌ Live chat monitor error:', err.message);
+    writeLog(`❌ Live monitor failed: ${err.message}`, 'live');
     if (mainWindowRef) {
       mainWindowRef.webContents.send('live-log', `❌ Live monitor failed: ${err.message}`);
     }
