@@ -106,11 +106,20 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('before-quit', () => {
+  if (reviewWindow && !reviewWindow.isDestroyed()) {
+    reviewWindow.destroy();
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
 // === Navigation ===
+ipcMain.on('load-step-1', () => {
+  mainWindow.loadFile(path.join(__dirname, '/steps/step1.html'));
+});
 ipcMain.on('load-step-2', () => {
   mainWindow.loadFile(path.join(__dirname, '/steps/step2.html'));
 });
@@ -263,7 +272,6 @@ ipcMain.on('start-live-monitor', async (_event, videoId) => {
   mainWindow.webContents.send('live-log', '🟢 Live monitor started');
 });
 
-// Periodically clear old processed messages (memory optimization)
 setInterval(() => {
   if (processedLiveMessages.size > 1000) {
     processedLiveMessages.clear();
