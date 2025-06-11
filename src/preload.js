@@ -38,11 +38,19 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.once('live-monitor-stopped', () => callback());
   },
 
-  // === Filter Management (Optional) ===
+  // === Filter Management ===
   addFilterEntry: (mode, entry) =>
     ipcRenderer.invoke('add-filter-entry', mode, entry),
   resetFilters: (mode) =>
     ipcRenderer.invoke('reset-filters', mode),
+
+  // === File System Helpers ===
+  openFilterFile: (mode) =>
+    ipcRenderer.invoke('open-filter-file', mode), // e.g., 'video' or 'live'
+
+  // === Font Theme Configuration ===
+  updateFontFamily: (font) =>
+    ipcRenderer.send('update-font-family', font), // Optional, if handled separately
 
   // === Step Navigation ===
   loadStep2: () => ipcRenderer.send('load-step-2'),
