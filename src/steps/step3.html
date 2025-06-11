@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>YouTube Comment Cleaner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Oswald&family=EB+Garamond&family=Roboto&family=Nunito&family=Spectral&family=Karla&family=Abril+Fatface&family=Poppins&family=Source+Sans+Pro&family=Source+Serif+Pro&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -23,6 +23,11 @@
       background: var(--bg);
       color: var(--text);
       font-family: var(--paragraph-font);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    h1, h2, h3, .switch-label, .stats span {
+      font-family: var(--title-font);
     }
 
     .container {
@@ -241,7 +246,6 @@
         </div>
       </div>
 
-      <!-- Unified Comment Box with Tabs -->
       <div class="tabs">
         <button class="tab-btn active" data-tab="high">🚩 Highly Likely</button>
         <button class="tab-btn" data-tab="possible">⚠️ Somewhat Likely</button>
@@ -280,6 +284,156 @@
     <div class="toast" id="toast">✔️ Done</div>
   </div>
 
-  <script src="../renderer.js"></script>
+<script>
+  const comments = { high: [], possible: [], safe: [] };
+  let currentTab = 'high';
+  let currentPage = 1;
+  const COMMENTS_PER_PAGE = 10;
+  let liveMonitorActive = false;
+
+  const themes = {
+    default: { title: "'Segoe UI'", paragraph: "'Segoe UI'", text: "#000", bg: "#fff", accent: "#1d72f3" },
+    classic: { title: "'Oswald'", paragraph: "'EB Garamond'", text: "#1e1e1e", bg: "#faf8f5", accent: "#6a4e42" },
+    modern: { title: "'Roboto'", paragraph: "'Nunito'", text: "#222", bg: "#f6f8fa", accent: "#1976d2" },
+    elegant: { title: "'Spectral'", paragraph: "'Karla'", text: "#2c2c2c", bg: "#fbfbf7", accent: "#9a6b99" },
+    futuristic: { title: "'Abril Fatface'", paragraph: "'Poppins'", text: "#fff", bg: "#1a1a1a", accent: "#00ffff" },
+    minimalist: { title: "'Source Sans Pro'", paragraph: "'Source Serif Pro'", text: "#111", bg: "#fefefe", accent: "#4caf50" },
+  };
+
+  async function applyThemeFromConfig() {
+    const config = await window.api.loadConfig?.() || {};
+    const selected = themes[config.font] ? config.font : 'default';
+    document.getElementById('fontSelector').value = selected;
+    const t = themes[selected];
+    document.body.style.setProperty('--title-font', t.title);
+    document.body.style.setProperty('--paragraph-font', t.paragraph);
+    document.body.style.setProperty('--text', t.text);
+    document.body.style.setProperty('--bg', t.bg);
+    document.body.style.setProperty('--accent', t.accent);
+    document.body.style.setProperty('--btn-bg', t.accent);
+    document.body.style.setProperty('--btn-text', t.text === '#ffffff' ? '#000' : '#fff');
+  }
+
+  function updateTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === currentTab);
+    });
+  }
+
+  function renderComments() {
+    const box = document.getElementById('commentBox');
+    box.innerHTML = '';
+    const list = comments[currentTab] || [];
+    const start = (currentPage - 1) * COMMENTS_PER_PAGE;
+    const paginated = list.slice(start, start + COMMENTS_PER_PAGE);
+    if (paginated.length === 0) {
+      box.innerHTML = '<p><i>No comments in this category.</i></p>';
+    } else {
+      for (const c of paginated) {
+        const div = document.createElement('div');
+        div.innerHTML = `<b>${c.author}</b> <small>${new Date(c.publishedAt).toLocaleString()}</small><br/>${c.text}`;
+        box.appendChild(div);
+      }
+    }
+    document.getElementById('commentPagination').innerHTML = `
+      <button ${currentPage === 1 ? 'disabled' : ''} onclick="prevPage()">⬅️ Prev</button>
+      Page ${currentPage}
+      <button ${start + COMMENTS_PER_PAGE >= list.length ? 'disabled' : ''} onclick="nextPage()">Next ➡️</button>
+    `;
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      currentPage--;
+      renderComments();
+    }
+  }
+
+  function nextPage() {
+    const list = comments[currentTab] || [];
+    if (currentPage * COMMENTS_PER_PAGE < list.length) {
+      currentPage++;
+      renderComments();
+    }
+  }
+
+  async function analyze() {
+    const link = document.getElementById('videoLink').value.trim();
+    if (!link) return alert("Please enter a YouTube link.");
+    const result = await window.api.analyzeComments?.(link);
+    comments.high = result?.highlyLikely || [];
+    comments.possible = result?.possibleLikely || [];
+    comments.safe = result?.safe || [];
+    document.getElementById('highCount').textContent = comments.high.length;
+    document.getElementById('possibleCount').textContent = comments.possible.length;
+    document.getElementById('safeCount').textContent = comments.safe.length;
+    currentTab = 'high';
+    currentPage = 1;
+    updateTabs();
+    renderComments();
+  }
+
+  function appendLiveLog(text) {
+    const log = document.getElementById('liveLogBox');
+    log.textContent += '\n' + text;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function startLiveMonitor() {
+    if (liveMonitorActive) return;
+    const videoId = document.getElementById('liveVideoId').value.trim();
+    window.api.startLiveMonitor(videoId || null);
+    liveMonitorActive = true;
+    document.getElementById('startLiveMonitor').style.display = 'none';
+    document.getElementById('stopLiveMonitor').style.display = '';
+    appendLiveLog("🔄 Starting monitor...");
+  }
+
+  function stopLiveMonitor() {
+    if (!liveMonitorActive) return;
+    window.api.stopLiveMonitor();
+    liveMonitorActive = false;
+    document.getElementById('startLiveMonitor').style.display = '';
+    document.getElementById('stopLiveMonitor').style.display = 'none';
+    appendLiveLog("🛑 Monitor stopped.");
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    applyThemeFromConfig();
+
+    document.getElementById('analyzeBtn').addEventListener('click', analyze);
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentTab = btn.dataset.tab;
+        currentPage = 1;
+        updateTabs();
+        renderComments();
+      });
+    });
+
+    document.getElementById('fontSelector').addEventListener('change', e => {
+      const theme = e.target.value;
+      window.api.saveConfig?.({ font: theme });
+      applyThemeFromConfig();
+    });
+
+    document.getElementById('tabToggle').addEventListener('change', e => {
+      document.getElementById('video').classList.toggle('active', !e.target.checked);
+      document.getElementById('live').classList.toggle('active', e.target.checked);
+    });
+
+    document.getElementById('startLiveMonitor').addEventListener('click', startLiveMonitor);
+    document.getElementById('stopLiveMonitor').addEventListener('click', stopLiveMonitor);
+
+    window.api.onLiveChatMessage?.(msgs => {
+      msgs.forEach(m => appendLiveLog(`💬 ${m.author}: ${m.text}`));
+    });
+
+    window.api.onLiveMonitorStopped?.(() => {
+      stopLiveMonitor();
+    });
+  });
+</script>
 </body>
 </html>
