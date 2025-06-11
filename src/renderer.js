@@ -40,8 +40,9 @@ async function loadStep1() {
       setTimeout(() => {
         window.location.href = '../steps/step2.html';
       }, 1000);
-    } catch {
-      showToast('❌ Failed to save .env');
+    } catch (err) {
+        console.error('Failed to write .env file:', err); // ⬅️ Add this
+        showToast('❌ Failed to save .env');
     }
   });
 }
@@ -194,6 +195,7 @@ async function loadStep3() {
 
   stopBtn.addEventListener('click', async () => {
     await window.api.stopLiveMonitor();
+    activeMessageCache.clear();
     appendLiveLog(`🛑 Monitoring stopped`);
     startBtn.style.display = 'inline-block';
     stopBtn.style.display = 'none';
