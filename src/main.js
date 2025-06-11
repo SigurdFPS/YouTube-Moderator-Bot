@@ -282,3 +282,9 @@ ipcMain.on('save-config', (_event, newConfig) => {
   const merged = { ...current, ...newConfig };
   saveConfig(merged);
 });
+
+// === App Relaunch for Fresh .env Load ===
+ipcMain.on('reload-app', () => {
+  app.relaunch();
+  app.exit(0);
+});
