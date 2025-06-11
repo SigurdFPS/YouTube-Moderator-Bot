@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Step 3 – YouTube Comment Cleaner</title>
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Tahoma&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Quattrocento&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Fanwood+Text&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Fjalla+One&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&display=swap" rel="stylesheet" />
-
   <style>
     :root {
       --bg: #fff;
@@ -22,14 +14,12 @@
       --input-bg: #f0f0f0;
       --border: #ccc;
     }
-
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
       font-family: 'Segoe UI', sans-serif;
     }
-
     .container {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -38,7 +28,6 @@
       max-width: 1200px;
       margin: auto;
     }
-
     header {
       grid-column: 1 / -1;
       display: flex;
@@ -46,31 +35,25 @@
       align-items: center;
       margin-bottom: 20px;
     }
-
+    .tabs {
+      display: flex;
+      gap: 10px;
+    }
     .tabs button {
       padding: 10px 20px;
-      margin-right: 10px;
       border: none;
       cursor: pointer;
       background: #e0e0e0;
       color: #333;
     }
-
     .tabs button.active {
       background: var(--btn-bg);
       color: var(--btn-text);
     }
-
-    select#fontSelect {
+    select#fontSelector {
       padding: 10px;
       font-size: 14px;
-      min-width: 200px;
     }
-
-    .full-width {
-      grid-column: 1 / -1;
-    }
-
     .box {
       background: var(--input-bg);
       border: 1px solid var(--border);
@@ -79,43 +62,35 @@
       white-space: pre-wrap;
       overflow-y: auto;
     }
-
     input, button {
       padding: 10px;
       font-size: 16px;
     }
-
     button {
       background: var(--btn-bg);
       color: var(--btn-text);
       border: none;
       cursor: pointer;
     }
-
     .filter-row {
       display: flex;
       gap: 10px;
       margin-top: 10px;
     }
-
     .filter-row input {
       flex: 1;
     }
-
     .filter-row button {
       flex-shrink: 0;
     }
-
     .stats {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
-
     .stats span {
       font-weight: bold;
     }
-
     .toast {
       position: fixed;
       bottom: 15px;
@@ -127,7 +102,6 @@
       opacity: 0;
       transition: opacity 0.3s;
     }
-
     .toast.show {
       opacity: 1;
     }
@@ -135,25 +109,18 @@
 </head>
 <body>
   <div class="container">
-    <header class="full-width">
-      <div style="display: flex; gap: 10px;">
-        <div class="tabs">
-          <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
-          <button class="tab-button" data-tab="live">🔴 Live Mode</button>
-        </div>
+    <header>
+      <div class="tabs">
+        <button class="tab-button active" data-tab="video">🎬 Video Analysis</button>
+        <button class="tab-button" data-tab="live">🔴 Live Mode</button>
       </div>
-      <div>
-        <select id="fontSelect">
-          <option value="Segoe UI">Segoe UI (Default)</option>
-          <option value="Tahoma">Tahoma</option>
-          <option value="Quattrocento">Quattrocento</option>
-          <option value="Fanwood Text">Fanwood Text</option>
-          <option value="Oswald">Oswald</option>
-          <option value="Fjalla One">Fjalla One</option>
-          <option value="Libre Baskerville">Libre Baskerville</option>
-          <option value="EB Garamond">EB Garamond</option>
-        </select>
-      </div>
+      <select id="fontSelector">
+        <option value="Segoe UI">Segoe UI (Default)</option>
+        <option value="Quattrocento, serif">Classic</option>
+        <option value="Oswald, sans-serif">Modern</option>
+        <option value="Fjalla One, sans-serif">Futuristic</option>
+        <option value="EB Garamond, serif">Minimalist</option>
+      </select>
     </header>
 
     <!-- Video Analysis Column -->
@@ -191,7 +158,7 @@
       <input id="liveVideoId" type="text" placeholder="Live video ID (optional)" />
       <div class="filter-row">
         <button id="startLiveMonitor">🚨 Start Live Monitor</button>
-        <button id="stopLiveMonitor">🛑 Stop Monitor</button>
+        <button id="stopLiveMonitor" style="display: none;">🛑 Stop Monitor</button>
       </div>
       <div class="box" id="liveLogBox">🟢 Live chat logs...</div>
 
@@ -208,23 +175,13 @@
     <div class="toast" id="toast">✔️ Done</div>
   </div>
 
-  <script src="../renderer.js"></script>
   <script>
-    document.getElementById('fontSelect').addEventListener('change', (e) => {
-      document.body.style.fontFamily = e.target.value;
-    });
-
-    const tabs = document.querySelectorAll('.tab-button');
-    const contents = document.querySelectorAll('.tab-content');
-    tabs.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabs.forEach(b => b.classList.remove('active'));
-        contents.forEach(c => c.style.display = 'none');
-        btn.classList.add('active');
-        const tab = btn.getAttribute('data-tab');
-        document.getElementById(tab).style.display = 'block';
-      });
+    const selector = document.getElementById('fontSelector');
+    selector.addEventListener('change', () => {
+      document.body.style.fontFamily = selector.value;
     });
   </script>
+
+  <script src="../renderer.js"></script>
 </body>
 </html>
