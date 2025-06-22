@@ -5,11 +5,6 @@
 STEP 1:
 [AppScreenshot](https://github.com/user-attachments/assets/71b62ecd-6925-4a34-8e63-63857b7ea6b4)
 
-STEP2:
-![STEP2](https://github.com/user-attachments/assets/ba3cedd9-55a5-4cd2-9c23-20fd810ea8a4)
-
-STEP3:
-
 
 ---
 
