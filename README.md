@@ -3,7 +3,7 @@
 > ⚙️ Open-source YouTube comment moderation tool — built with Electron. Analyze and remove spammy bot-like comments from your videos with ease.
 
 ![App Screenshot] STEP 1:
-public/images/AppScreenshot.png
+[img]public/images/AppScreenshot.png[/img]
 
 ---
 
